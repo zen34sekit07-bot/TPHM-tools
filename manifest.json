@@ -1,0 +1,22 @@
+{
+  "name": "東上プライベートホールみずほ台 共同施工管理ツール",
+  "short_name": "みずほ台施工管理",
+  "description": "フローリスト石原 & ユー花園 共同施工管理ツール",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1f242d",
+  "theme_color": "#1f242d",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
