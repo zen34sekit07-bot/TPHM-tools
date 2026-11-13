@@ -177,10 +177,19 @@
             </div>
 
             <div id="map-viewport" class="relative flex-1 bg-white rounded-lg border border-stone-300/90 shadow-xs overflow-hidden flex items-center justify-center">
-                <!-- ズームリセットボタン -->
-                <div id="zoom-indicator" class="hidden absolute top-3 right-3 z-20 bg-stone-900/90 text-[#fdfbf7] px-3 py-1.5 rounded-md text-xs flex items-center gap-2 shadow-md border border-amber-700/40">
-                    <span id="zoom-area-label" class="whitespace-nowrap">拡大表示中</span>
-                    <button type="button" onclick="resetMapZoom()" class="text-[#ebd29d] hover:underline font-bold ml-1 whitespace-nowrap">全体表示へ戻す</button>
+                <!-- ピン選択時のタイトルウィンドウ（右上に☓あり・クリックで詳細画面へ） -->
+                <div id="pin-title-popover" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-[#1f242d]/95 text-[#fdfbf7] rounded-lg shadow-xl border border-[#d6b779]/70 flex items-center overflow-hidden max-w-[92%]">
+                    <button type="button" onclick="openSelectedPinDetailModal()" class="px-3.5 py-2.5 flex items-center gap-2 text-left hover:bg-stone-800/90 transition min-w-0">
+                        <span id="pin-popover-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
+                        <div class="min-w-0">
+                            <div id="pin-popover-title" class="text-xs sm:text-sm font-bold text-[#fdfbf7] truncate">エリア名</div>
+                            <div class="text-[10px] text-[#d6b779] whitespace-nowrap">もう一度ピンまたはここをタップで詳細を開く</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-xs text-[#d6b779] ml-1 shrink-0"></i>
+                    </button>
+                    <button type="button" onclick="closePinTitlePopover()" class="px-3 py-2.5 self-stretch flex items-center justify-center text-stone-300 hover:text-white hover:bg-red-900/60 border-l border-stone-700 transition shrink-0" title="閉じて全体図へ戻る" aria-label="閉じる">
+                        <i class="fa-solid fa-xmark text-base"></i>
+                    </button>
                 </div>
 
                 <!-- 編集モード案内バナー -->
@@ -792,10 +801,10 @@
     </div>
 
     <!-- ==========================================
-         モーダル6: 設定モーダル（音の設定・アカウント情報・管理者ツール・更新履歴・クレジット）
+         モーダル6: 設定メニュー画面（各項目ボタンから別画面モーダルを開く）
          ========================================== -->
     <div id="db-admin-modal" class="hidden fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-        <div class="bg-[#fdfbf7] w-full sm:max-w-xl rounded-t-lg sm:rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-300">
+        <div class="bg-[#fdfbf7] w-full sm:max-w-md rounded-t-lg sm:rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-300">
             <div class="px-4 sm:px-5 py-3.5 bg-[#1f242d] text-[#fdfbf7] flex items-center justify-between border-b border-amber-700/40">
                 <h3 class="text-sm sm:text-base font-bold flex items-center gap-2">
                     <i class="fa-solid fa-gear text-[#d6b779]"></i>
@@ -806,102 +815,275 @@
                 </button>
             </div>
 
-            <div class="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 text-xs">
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-2.5 flex-1 text-xs sm:text-sm">
                 <!-- 1. 音の設定 -->
-                <div class="bg-white p-3.5 rounded-md border border-stone-200 space-y-2.5">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-volume-high text-[#8c672a]"></i>
-                            <span>音の設定</span>
+                <button type="button" onclick="openSettingsSubModal('sound')" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-9 h-9 rounded-md bg-amber-100/80 text-[#8c672a] flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-volume-high"></i>
                         </span>
-                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" id="setting-sound-toggle" checked onchange="toggleSoundSetting(this.checked)" class="w-4 h-4 accent-[#3d6b5e] rounded">
-                            <span id="setting-sound-status-label" class="font-bold text-stone-700">効果音 ON</span>
-                        </label>
+                        <div class="min-w-0">
+                            <div class="font-bold text-stone-800">音の設定</div>
+                            <div id="settings-menu-sound-sub" class="text-[11px] text-stone-500">効果音 ON / テスト再生</div>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-stone-100 text-[11px] text-stone-500">
-                        <span>館内図ピンタップ時の操作音</span>
-                        <button type="button" onclick="playBeepSound(true)" class="px-2.5 py-1 bg-stone-100 hover:bg-amber-50 text-stone-700 border border-stone-300 rounded font-bold transition whitespace-nowrap">
-                            <i class="fa-solid fa-play mr-1 text-[#8c672a]"></i>テスト再生
-                        </button>
-                    </div>
-                </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-stone-400 shrink-0"></i>
+                </button>
 
                 <!-- 2. アカウント情報 -->
-                <div class="bg-white p-3.5 rounded-md border border-stone-200 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-id-card text-[#3d6b5e]"></i>
-                            <span>アカウント情報</span>
+                <button type="button" onclick="openSettingsSubModal('account')" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-9 h-9 rounded-md bg-emerald-100/80 text-[#3d6b5e] flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-id-card"></i>
                         </span>
-                        <span id="modal-sync-status" class="text-[10px] text-stone-500">自動同期有効</span>
+                        <div class="min-w-0">
+                            <div class="font-bold text-stone-800">アカウント情報</div>
+                            <div class="text-[11px] text-stone-500">名前・所属・パスワードの変更 / ログアウト</div>
+                        </div>
                     </div>
-                    <div id="current-user-detail-card" class="p-2.5 bg-stone-50 rounded border border-stone-200 space-y-1"></div>
-                    <div class="pt-1 flex justify-end">
-                        <button type="button" onclick="logoutCurrentUser()" class="w-full sm:w-auto px-4 py-2 bg-stone-700 hover:bg-stone-800 text-white rounded-md text-xs font-bold transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                            <span>このアカウントからログアウト</span>
-                        </button>
-                    </div>
-                </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-stone-400 shrink-0"></i>
+                </button>
 
-                <!-- 3. 管理者ツール（管理者専用、アカウント管理） -->
-                <div id="admin-account-db-section" class="hidden bg-amber-50/50 p-3.5 rounded-md border border-amber-300/80 space-y-2.5">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-screwdriver-wrench text-red-700"></i>
-                            <span>管理者ツール（管理者専用・アカウント管理）</span>
+                <!-- 3. 管理者ツール（管理者専用・アカウント管理） -->
+                <button type="button" id="settings-menu-admin-btn" onclick="openSettingsSubModal('admin')" class="hidden w-full p-3.5 bg-amber-50/70 hover:bg-amber-100/70 rounded-lg border border-amber-300 shadow-2xs flex items-center justify-between gap-3 text-left transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-9 h-9 rounded-md bg-red-100 text-red-700 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
                         </span>
+                        <div class="min-w-0">
+                            <div class="font-bold text-stone-800 flex items-center gap-1.5">
+                                <span>管理者ツール</span>
+                                <span class="px-1.5 py-0.5 bg-red-800 text-white rounded text-[9px] font-bold">管理者専用</span>
+                            </div>
+                            <div class="text-[11px] text-stone-600">新規アカウント発行・編集・削除・変更履歴</div>
+                        </div>
                     </div>
-                    <div id="user-db-table-wrap" class="space-y-2.5">
-                        <!-- JSでアカウント一覧を描画 -->
-                    </div>
-                </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-stone-500 shrink-0"></i>
+                </button>
 
                 <!-- 4. 更新履歴 -->
-                <div class="bg-white rounded-md border border-stone-200 overflow-hidden">
-                    <button type="button" onclick="toggleSettingsAccordion('changelog')" class="w-full px-3.5 py-2.5 bg-stone-50 hover:bg-stone-100 flex items-center justify-between text-left transition">
-                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-clock-rotate-left text-[#8c672a]"></i>
-                            <span>更新履歴</span>
+                <button type="button" onclick="openSettingsSubModal('changelog')" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-9 h-9 rounded-md bg-stone-100 text-stone-700 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
                         </span>
-                        <i id="settings-acc-icon-changelog" class="fa-solid fa-chevron-down text-xs text-stone-500 transition-transform duration-200"></i>
-                    </button>
-                    <div id="settings-acc-body-changelog" class="hidden px-3.5 py-3 border-t border-stone-200 space-y-2 text-[11px] text-stone-700 leading-relaxed">
-                        <div class="border-l-2 border-[#8c672a] pl-2.5">
-                            <div class="font-bold text-stone-800">Ver 1.4（2026/11/13）</div>
-                            <p>・館内図を最新図面に差し替え、細身まち針ピン（カラー・サイズ自由調整＆新規ページ作成）に対応<br>・メニューを「設定」へ統合（音の設定・アカウント情報・管理者ツール・更新履歴・クレジット）</p>
-                        </div>
-                        <div class="border-l-2 border-stone-300 pl-2.5">
-                            <div class="font-bold text-stone-800">Ver 1.2（2026/11/12）</div>
-                            <p>・施工記録の個人情報モザイク処理機能、什器階層ツリー台帳および編集履歴記録を実装</p>
-                        </div>
-                        <div class="border-l-2 border-stone-300 pl-2.5">
-                            <div class="font-bold text-stone-800">Ver 1.0（2026/11/01）</div>
-                            <p>・東上プライベートホールみずほ台 共同施工管理ツール 初版リリース</p>
+                        <div class="min-w-0">
+                            <div class="font-bold text-stone-800">更新履歴</div>
+                            <div class="text-[11px] text-stone-500">ツールの機能追加・アップデート記録</div>
                         </div>
                     </div>
-                </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-stone-400 shrink-0"></i>
+                </button>
 
                 <!-- 5. クレジット -->
-                <div class="bg-white rounded-md border border-stone-200 overflow-hidden">
-                    <button type="button" onclick="toggleSettingsAccordion('credits')" class="w-full px-3.5 py-2.5 bg-stone-50 hover:bg-stone-100 flex items-center justify-between text-left transition">
-                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-circle-info text-[#3d6b5e]"></i>
-                            <span>クレジット</span>
+                <button type="button" onclick="openSettingsSubModal('credits')" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-9 h-9 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-circle-info"></i>
                         </span>
-                        <i id="settings-acc-icon-credits" class="fa-solid fa-chevron-down text-xs text-stone-500 transition-transform duration-200"></i>
-                    </button>
-                    <div id="settings-acc-body-credits" class="hidden px-3.5 py-3 border-t border-stone-200 space-y-1.5 text-[11px] text-stone-700 leading-relaxed">
-                        <p class="font-bold text-stone-800">東上プライベートホールみずほ台 共同施工管理ツール</p>
-                        <p>運用：フローリスト石原 &amp; 株式会社ユー花園</p>
-                        <p>企画・開発：関 貴文（株式会社ユー花園 所沢支店 施工課）</p>
+                        <div class="min-w-0">
+                            <div class="font-bold text-stone-800">クレジット</div>
+                            <div class="text-[11px] text-stone-500">開発・運用クレジット情報</div>
+                        </div>
                     </div>
-                </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-stone-400 shrink-0"></i>
+                </button>
             </div>
 
             <div class="px-4 py-3 bg-stone-100 border-t border-stone-200 flex justify-end">
                 <button type="button" onclick="closeDbAdminModal()" class="px-5 py-2 bg-[#293241] hover:bg-[#1f2633] text-[#fdfbf7] rounded-md text-xs font-bold">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         モーダル6-B: 設定サブ画面（音の設定 / アカウント情報 / 管理者ツール / 更新履歴 / クレジット）
+         ========================================== -->
+    <div id="settings-sub-modal" class="hidden fixed inset-0 bg-stone-950/80 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-[#fdfbf7] w-full sm:max-w-xl rounded-t-lg sm:rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-stone-300">
+            <div class="px-4 sm:px-5 py-3.5 bg-[#1f242d] text-[#fdfbf7] flex items-center justify-between border-b border-amber-700/40">
+                <div class="flex items-center gap-2 min-w-0">
+                    <button type="button" onclick="closeSettingsSubModal()" class="p-1 text-[#d6b779] hover:text-white rounded" title="設定一覧へ戻る">
+                        <i class="fa-solid fa-arrow-left text-sm"></i>
+                    </button>
+                    <h3 id="settings-sub-title" class="text-sm sm:text-base font-bold truncate">設定詳細</h3>
+                </div>
+                <button type="button" onclick="closeSettingsSubModal()" class="p-1.5 text-stone-300 hover:text-white rounded-md shrink-0">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-4 sm:p-5 overflow-y-auto flex-1 text-xs space-y-4">
+                <!-- サブ画面1: 音の設定 -->
+                <div id="subview-sound" class="settings-subview hidden space-y-3">
+                    <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-sm text-stone-800">効果音（ピンタップ操作音）</span>
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="setting-sound-toggle" checked onchange="toggleSoundSetting(this.checked)" class="w-4 h-4 accent-[#3d6b5e] rounded">
+                                <span id="setting-sound-status-label" class="font-bold text-stone-700">効果音 ON</span>
+                            </label>
+                        </div>
+                        <p class="text-[11px] text-stone-500 leading-relaxed">
+                            館内図のピンをタップした際の操作音をオン／オフできます。設定はこの端末に保存されます。
+                        </p>
+                        <div class="pt-2 border-t border-stone-100 flex justify-end">
+                            <button type="button" onclick="playBeepSound(true)" class="px-3.5 py-2 bg-stone-100 hover:bg-amber-50 text-stone-800 border border-stone-300 rounded-md font-bold transition whitespace-nowrap">
+                                <i class="fa-solid fa-play mr-1.5 text-[#8c672a]"></i>テスト再生する
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- サブ画面2: アカウント情報（いつでも名前・所属・パスワード変更可能） -->
+                <div id="subview-account" class="settings-subview hidden space-y-4">
+                    <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-stone-800">ご自身のアカウント情報・変更</span>
+                            <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">スプレッドシート自動同期</span>
+                        </div>
+                        <p class="text-[11px] text-stone-500 leading-relaxed">
+                            お名前・所属会社・パスワードはいつでも変更できます。変更内容はスプレッドシートへ自動反映されます。
+                        </p>
+
+                        <div class="space-y-3 pt-1">
+                            <div>
+                                <label class="block text-xs font-bold text-stone-700 mb-1">お名前（フルネーム） <span class="text-red-600">*</span></label>
+                                <input type="text" id="self-edit-name" class="w-full p-2.5 bg-white border border-stone-300 rounded-md text-sm text-stone-800">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-stone-700 mb-1">所属会社 <span class="text-red-600">*</span></label>
+                                <select id="self-edit-org" class="w-full p-2.5 bg-white border border-stone-300 rounded-md text-sm text-stone-800">
+                                    <option value="FI">FI（フローリスト石原）</option>
+                                    <option value="YK">YK（ユー花園）</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-stone-700 mb-1">パスワード（半角英数字10桁まで） <span class="text-red-600">*</span></label>
+                                <input type="text" id="self-edit-password" maxlength="10" class="w-full p-2.5 bg-white border border-stone-300 rounded-md text-sm font-mono text-stone-800">
+                            </div>
+
+                            <button type="button" onclick="saveSelfAccountChanges()" class="w-full py-2.5 bg-[#3d6b5e] hover:bg-[#2f5449] text-white rounded-md text-xs sm:text-sm font-bold shadow-xs transition">
+                                <i class="fa-solid fa-check mr-1"></i>変更を保存する
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3.5 rounded-md border border-stone-200 flex items-center justify-between gap-2">
+                        <span class="text-xs text-stone-600">別アカウントへの切替・ログアウト</span>
+                        <button type="button" onclick="logoutCurrentUser()" class="px-4 py-2 bg-stone-700 hover:bg-stone-800 text-white rounded-md text-xs font-bold transition whitespace-nowrap">
+                            <i class="fa-solid fa-right-from-bracket mr-1"></i>ログアウト
+                        </button>
+                    </div>
+                </div>
+
+                <!-- サブ画面3: 管理者ツール（新規アカウント発行・編集・削除・アカウント変更履歴） -->
+                <div id="subview-admin" class="settings-subview hidden space-y-4">
+                    <!-- 新規アカウント発行フォーム（スプレッドシートへ追加） -->
+                    <div class="bg-amber-50/70 p-3.5 rounded-md border border-amber-300 space-y-2.5">
+                        <div class="font-bold text-stone-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-plus text-[#8c672a]"></i>
+                            <span>新規アカウント発行（スプレッドシートへ追加）</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-stone-700 mb-0.5">お名前 <span class="text-red-600">*</span></label>
+                                <input type="text" id="admin-new-user-name" placeholder="フルネーム" class="w-full p-2 bg-white border border-stone-300 rounded text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-stone-700 mb-0.5">所属会社 <span class="text-red-600">*</span></label>
+                                <select id="admin-new-user-org" class="w-full p-2 bg-white border border-stone-300 rounded text-xs">
+                                    <option value="FI">FI（フローリスト石原）</option>
+                                    <option value="YK">YK（ユー花園）</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-stone-700 mb-0.5">パスワード（英数字10桁） <span class="text-red-600">*</span></label>
+                                <input type="text" id="admin-new-user-pass" maxlength="10" placeholder="半角英数字" class="w-full p-2 bg-white border border-stone-300 rounded text-xs font-mono">
+                            </div>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="button" onclick="adminCreateNewAccount()" class="px-4 py-2 bg-[#293241] hover:bg-[#1f2633] text-[#fdfbf7] rounded text-xs font-bold shadow-2xs transition whitespace-nowrap">
+                                <i class="fa-solid fa-plus mr-1 text-[#d6b779]"></i>アカウントを発行して追加
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 登録済みアカウント一覧（編集・削除） -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-stone-800 flex items-center gap-1.5">
+                                <i class="fa-solid fa-users-gear text-[#3d6b5e]"></i>
+                                <span>登録済みアカウント管理（編集・削除）</span>
+                            </span>
+                            <button type="button" onclick="fetchUsersFromDriveSheet(false)" class="px-2.5 py-1 bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 rounded text-[11px] font-bold">
+                                <i class="fa-solid fa-rotate mr-1 text-[#3d6b5e]"></i>最新同期
+                            </button>
+                        </div>
+                        <div id="user-db-table-wrap" class="space-y-2.5">
+                            <!-- JSで描画 -->
+                        </div>
+                    </div>
+
+                    <!-- アカウント変更履歴（管理者全員共有） -->
+                    <div class="border-t border-stone-300 pt-3 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-stone-800 flex items-center gap-1.5">
+                                <i class="fa-solid fa-clock-rotate-left text-red-700"></i>
+                                <span>アカウント変更履歴（管理者全員共有）</span>
+                            </span>
+                            <span id="account-history-count" class="text-[11px] text-stone-500"></span>
+                        </div>
+                        <div id="account-change-history-list" class="space-y-2 max-h-60 overflow-y-auto">
+                            <!-- JSで描画 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- サブ画面4: 更新履歴 -->
+                <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
+                    <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.5（2026/11/13）</div>
+                            <p class="mt-0.5">・館内図ピンタップ時の挙動を改善（ピン付近ズーム＋タイトル小窓表示→再タップで詳細画面、×で全体図へ自動復帰）<br>・設定画面を項目別メニュー構成へ刷新し、アカウント情報の随時変更・管理者ツールでの新規発行/削除/変更履歴共有に対応</p>
+                        </div>
+                        <div class="border-l-2 border-stone-300 pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.4（2026/11/13）</div>
+                            <p class="mt-0.5">・館内図を最新図面に差し替え、細身まち針ピン（カラー・サイズ自由調整＆新規ページ作成）に対応</p>
+                        </div>
+                        <div class="border-l-2 border-stone-300 pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.2（2026/11/12）</div>
+                            <p class="mt-0.5">・施工記録の個人情報モザイク処理機能、什器階層ツリー台帳および編集履歴記録を実装</p>
+                        </div>
+                        <div class="border-l-2 border-stone-300 pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.0（2026/11/01）</div>
+                            <p class="mt-0.5">・東上プライベートホールみずほ台 共同施工管理ツール 初版リリース</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- サブ画面5: クレジット -->
+                <div id="subview-credits" class="settings-subview hidden">
+                    <div class="bg-white p-4 rounded-md border border-stone-200 space-y-2 text-xs text-stone-700 leading-relaxed">
+                        <p class="font-bold text-sm text-stone-800">東上プライベートホールみずほ台 共同施工管理ツール</p>
+                        <div class="border-t border-stone-200 pt-2 space-y-1">
+                            <p><span class="text-stone-500">共同運用：</span>フローリスト石原 &amp; 株式会社ユー花園</p>
+                            <p><span class="text-stone-500">企画・開発：</span>関 貴文（株式会社ユー花園 所沢支店 施工課）</p>
+                            <p><span class="text-stone-500">システム構成：</span>HTML5 / Tailwind CSS / JavaScript / Google Apps Script 連携</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-4 py-3 bg-stone-100 border-t border-stone-200 flex justify-between gap-2">
+                <button type="button" onclick="closeSettingsSubModal()" class="px-4 py-2 bg-white hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-md text-xs font-bold">
+                    <i class="fa-solid fa-arrow-left mr-1"></i>設定一覧へ戻る
+                </button>
+                <button type="button" onclick="closeAllSettingsModals()" class="px-5 py-2 bg-[#293241] hover:bg-[#1f2633] text-[#fdfbf7] rounded-md text-xs font-bold">
                     閉じる
                 </button>
             </div>
@@ -981,7 +1163,70 @@
             });
         }
 
-        function queueOrSendUserSync(userObj) {
+        let accountChangeLogs = loadAccountChangeLogs();
+
+        function loadAccountChangeLogs() {
+            try {
+                const raw = localStorage.getItem('mizuhodai_account_change_logs');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) return parsed;
+                }
+            } catch (e) {}
+            return [];
+        }
+
+        function persistAccountChangeLogs() {
+            try {
+                localStorage.setItem('mizuhodai_account_change_logs', JSON.stringify(accountChangeLogs));
+            } catch (e) {}
+        }
+
+        function recordAccountChangeLog(actorName, actorId, targetName, targetId, actionType, detailText) {
+            const isSelf = (actorId && targetId && actorId === targetId) || (actorName === targetName && actionType === 'update');
+            let headline = "";
+            if (actionType === 'create') {
+                headline = `${actorName}が新規アカウント「${targetName}」を発行しました。`;
+            } else if (actionType === 'delete') {
+                headline = `${actorName}がアカウント「${targetName}」を削除しました。`;
+            } else if (isSelf) {
+                headline = `${actorName}が自身のアカウントを変更しました。`;
+            } else {
+                headline = `${actorName}が「${targetName}」のアカウントを変更しました。`;
+            }
+
+            const entry = {
+                id: 'alog_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                datetime: formatCurrentDateTime(),
+                actorName: actorName || '不明',
+                actorId: actorId || '',
+                targetName: targetName || '',
+                targetId: targetId || '',
+                actionType,
+                headline,
+                detail: detailText || ''
+            };
+
+            accountChangeLogs.unshift(entry);
+            persistAccountChangeLogs();
+
+            if (gasWebhookUrl && navigator.onLine) {
+                try {
+                    fetch(gasWebhookUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'logAccountChange',
+                            folder: '共同施工ツール',
+                            log: entry
+                        })
+                    }).catch(() => {});
+                } catch (e) {}
+            }
+        }
+
+        function queueOrSendUserSync(userObj, actionName = 'upsertUser') {
             saveSessionCookie(currentUser ? currentUser.id : userObj.id);
             const payloadUser = {
                 id: userObj.id,
@@ -990,7 +1235,8 @@
                 deviceHash: userObj.deviceHash || "",
                 createdAt: userObj.createdAt || "",
                 password: userObj.password || "",
-                lastLogin: userObj.lastLogin || ""
+                lastLogin: userObj.lastLogin || "",
+                _action: actionName
             };
 
             if (!navigator.onLine) {
@@ -1006,15 +1252,19 @@
 
         function sendUserPayloadToGas(payloadUser) {
             if (!gasWebhookUrl || !navigator.onLine) return;
+            const actionName = payloadUser._action || 'upsertUser';
+            const cleanUser = { ...payloadUser };
+            delete cleanUser._action;
             try {
                 fetch(gasWebhookUrl, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        action: 'upsertUser',
+                        action: actionName,
                         folder: '共同施工ツール',
-                        user: payloadUser
+                        userId: cleanUser.id,
+                        user: cleanUser
                     })
                 }).catch(() => {});
             } catch (e) {}
@@ -1413,9 +1663,20 @@
                             }
                         }
                     }
-                    const dbModal = document.getElementById('db-admin-modal');
-                    if (dbModal && !dbModal.classList.contains('hidden') && isCurrentUserAdmin()) {
+                    if (Array.isArray(data.accountLogs)) {
+                        data.accountLogs.forEach(rLog => {
+                            if (!rLog.id) return;
+                            if (!accountChangeLogs.some(l => l.id === rLog.id)) {
+                                accountChangeLogs.push(rLog);
+                            }
+                        });
+                        accountChangeLogs.sort((a, b) => String(b.datetime || '').localeCompare(String(a.datetime || '')));
+                        persistAccountChangeLogs();
+                    }
+                    const subModal = document.getElementById('settings-sub-modal');
+                    if (subModal && !subModal.classList.contains('hidden') && isCurrentUserAdmin()) {
                         renderUserDbTable();
+                        renderAccountChangeHistory();
                     }
                     if (!silent) {
                         showToast("スプレッドシートと同期しました", "success");
@@ -1428,35 +1689,19 @@
             }
         }
 
-        // 設定モーダル（音の設定・アカウント情報・管理者ツール・更新履歴・クレジット）
+        // 設定メニュー＆サブ画面モーダル制御
         function openDbAdminModal() {
             if (!currentUser) return;
             pushNavState('modal:db-admin');
             autoSyncAll();
 
-            const soundToggle = document.getElementById('setting-sound-toggle');
-            const soundLabel = document.getElementById('setting-sound-status-label');
-            if (soundToggle) soundToggle.checked = isSoundEnabled;
-            if (soundLabel) soundLabel.textContent = isSoundEnabled ? '効果音 ON' : '効果音 OFF';
+            const soundSub = document.getElementById('settings-menu-sound-sub');
+            if (soundSub) soundSub.textContent = isSoundEnabled ? '効果音 ON / テスト再生' : '効果音 OFF / テスト再生';
 
-            const detailCard = document.getElementById('current-user-detail-card');
-            if (detailCard && currentUser) {
-                const orgFull = currentUser.org === 'FI' ? 'フローリスト石原' : 'ユー花園';
-                detailCard.innerHTML = `
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="font-bold text-sm text-stone-800">${escapeHtml(currentUser.name)}</span>
-                        ${getOrgBadgeHtml(currentUser.org)}
-                        <span class="text-[11px] text-stone-600">(${orgFull})</span>
-                    </div>
-                `;
-            }
-
-            const adminSection = document.getElementById('admin-account-db-section');
-            if (isCurrentUserAdmin()) {
-                if (adminSection) adminSection.classList.remove('hidden');
-                renderUserDbTable();
-            } else {
-                if (adminSection) adminSection.classList.add('hidden');
+            const adminBtn = document.getElementById('settings-menu-admin-btn');
+            if (adminBtn) {
+                if (isCurrentUserAdmin()) adminBtn.classList.remove('hidden');
+                else adminBtn.classList.add('hidden');
             }
 
             const dbModal = document.getElementById('db-admin-modal');
@@ -1471,23 +1716,193 @@
             }
         }
 
+        function openSettingsSubModal(sectionKey) {
+            if (!currentUser) return;
+            if (sectionKey === 'admin' && !isCurrentUserAdmin()) return;
+
+            pushNavState(`modal:settings-sub:${sectionKey}`);
+
+            document.querySelectorAll('.settings-subview').forEach(el => el.classList.add('hidden'));
+            const targetView = document.getElementById(`subview-${sectionKey}`);
+            if (targetView) targetView.classList.remove('hidden');
+
+            const titles = {
+                sound: '音の設定',
+                account: 'アカウント情報',
+                admin: '管理者ツール（アカウント管理）',
+                changelog: '更新履歴',
+                credits: 'クレジット'
+            };
+            const titleEl = document.getElementById('settings-sub-title');
+            if (titleEl) titleEl.textContent = titles[sectionKey] || '設定';
+
+            if (sectionKey === 'sound') {
+                const soundToggle = document.getElementById('setting-sound-toggle');
+                const soundLabel = document.getElementById('setting-sound-status-label');
+                if (soundToggle) soundToggle.checked = isSoundEnabled;
+                if (soundLabel) soundLabel.textContent = isSoundEnabled ? '効果音 ON' : '効果音 OFF';
+            } else if (sectionKey === 'account') {
+                document.getElementById('self-edit-name').value = currentUser.name || '';
+                document.getElementById('self-edit-org').value = currentUser.org || 'YK';
+                document.getElementById('self-edit-password').value = currentUser.password || '';
+            } else if (sectionKey === 'admin') {
+                renderUserDbTable();
+                renderAccountChangeHistory();
+            }
+
+            const subModal = document.getElementById('settings-sub-modal');
+            if (subModal) subModal.classList.remove('hidden');
+        }
+
+        function closeSettingsSubModal(isBackAction = false) {
+            const subModal = document.getElementById('settings-sub-modal');
+            if (subModal) subModal.classList.add('hidden');
+            const soundSub = document.getElementById('settings-menu-sound-sub');
+            if (soundSub) soundSub.textContent = isSoundEnabled ? '効果音 ON / テスト再生' : '効果音 OFF / テスト再生';
+            if (!isBackAction && navigationHistory.length > 0 && navigationHistory[navigationHistory.length - 1].startsWith('modal:settings-sub:')) {
+                navigationHistory.pop();
+            }
+        }
+
+        function closeAllSettingsModals() {
+            closeSettingsSubModal(false);
+            closeDbAdminModal(false);
+        }
+
+        // 一般・管理者共通：自分のアカウント情報（名前・所属・パスワード）の随時変更
+        function saveSelfAccountChanges() {
+            if (!currentUser) return;
+            const newName = document.getElementById('self-edit-name').value.trim();
+            const newOrg = document.getElementById('self-edit-org').value;
+            const newPass = document.getElementById('self-edit-password').value.trim();
+
+            if (!newName) {
+                showToast("お名前を入力してください", "error");
+                return;
+            }
+            if (!newPass || !/^[a-zA-Z0-9]{1,10}$/.test(newPass)) {
+                showToast("パスワードは半角英数字10桁以内で入力してください", "error");
+                return;
+            }
+
+            const dup = usersDatabase.find(u => u.name === newName && u.id !== currentUser.id);
+            if (dup) {
+                showToast("同じお名前のアカウントが既に存在します", "error");
+                return;
+            }
+
+            const oldName = currentUser.name;
+            const oldOrg = currentUser.org;
+            const oldPass = currentUser.password || '';
+
+            const changes = [];
+            if (oldName !== newName) changes.push(`名前: ${oldName} → ${newName}`);
+            if (oldOrg !== newOrg) changes.push(`所属: ${oldOrg} → ${newOrg}`);
+            if (oldPass !== newPass) changes.push(`パスワード変更`);
+
+            if (changes.length === 0) {
+                showToast("変更された項目はありません", "info");
+                return;
+            }
+
+            currentUser.name = newName;
+            currentUser.org = newOrg;
+            currentUser.password = newPass;
+
+            recordAccountChangeLog(
+                newName,
+                currentUser.id,
+                newName,
+                currentUser.id,
+                'update',
+                changes.join(' / ')
+            );
+
+            syncUserToDriveSheet(currentUser);
+            completeLogin(currentUser, false);
+            showToast("アカウント情報を更新しました", "success");
+        }
+
+        // 管理者専用：新規アカウント発行（スプレッドシートへ追加）
+        function adminCreateNewAccount() {
+            if (!isCurrentUserAdmin() || !currentUser) return;
+            const name = document.getElementById('admin-new-user-name').value.trim();
+            const org = document.getElementById('admin-new-user-org').value;
+            const password = document.getElementById('admin-new-user-pass').value.trim();
+
+            if (!name) {
+                showToast("お名前を入力してください", "error");
+                return;
+            }
+            if (!password || !/^[a-zA-Z0-9]{1,10}$/.test(password)) {
+                showToast("パスワードは半角英数字10桁以内で入力してください", "error");
+                return;
+            }
+            if (usersDatabase.some(u => u.name === name)) {
+                showToast("同じお名前のアカウントが既に登録されています", "error");
+                return;
+            }
+
+            const nowStr = formatCurrentDateTime();
+            const seq = String(usersDatabase.length + 1).padStart(3, '0');
+            const randCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const newId = `${org}-${randCode}-${seq}`;
+
+            const newUser = {
+                id: newId,
+                name,
+                org,
+                isAdmin: 0,
+                deviceHash: "",
+                createdAt: nowStr,
+                password,
+                lastLogin: ""
+            };
+
+            usersDatabase.push(newUser);
+            recordAccountChangeLog(
+                currentUser.name,
+                currentUser.id,
+                newUser.name,
+                newUser.id,
+                'create',
+                `所属: ${org} / ID: ${newId}`
+            );
+
+            syncUserToDriveSheet(newUser);
+
+            document.getElementById('admin-new-user-name').value = "";
+            document.getElementById('admin-new-user-pass').value = "";
+
+            renderUserDbTable();
+            renderAccountChangeHistory();
+            showToast(`${newUser.name} のアカウントを発行しました`, "success");
+        }
+
         function renderUserDbTable() {
             const wrap = document.getElementById('user-db-table-wrap');
             if (!wrap || !isCurrentUserAdmin()) return;
 
             wrap.innerHTML = usersDatabase.map(u => {
+                const isSelf = currentUser && currentUser.id === u.id;
                 return `
                     <div class="bg-white p-3 rounded border border-stone-200 space-y-2 shadow-2xs">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="flex items-center gap-1.5 min-w-0">
                                 <span class="font-bold text-xs text-stone-800">${escapeHtml(u.name)}</span>
                                 ${getOrgBadgeHtml(u.org)}
+                                ${Number(u.isAdmin) === 1 ? `<span class="px-1.5 py-0.5 bg-red-100 text-red-800 rounded text-[9px] font-bold">管理者</span>` : ''}
                                 <span class="font-mono text-[10px] text-stone-500">(${escapeHtml(u.id)})</span>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 <button type="button" onclick="toggleEditUserRow('${escapeHtml(u.id)}')" class="px-2.5 py-0.5 bg-white hover:bg-amber-50 text-[#8c672a] border border-stone-300 rounded text-[11px] font-bold">
                                     編集
                                 </button>
+                                ${!isSelf ? `
+                                    <button type="button" onclick="adminDeleteAccount('${escapeHtml(u.id)}')" class="px-2.5 py-0.5 bg-white hover:bg-red-50 text-red-700 border border-red-200 rounded text-[11px] font-bold">
+                                        削除
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
                         <div class="text-[10px] text-stone-500 font-mono flex flex-wrap gap-x-3 gap-y-0.5">
@@ -1495,7 +1910,7 @@
                             <span>登録: ${escapeHtml(u.createdAt || '-')}</span>
                             <span>最終ログイン: ${escapeHtml(u.lastLogin || '-')}</span>
                         </div>
-                        <!-- インライン編集フォーム（名前・所属・パスワードのみ編集可能） -->
+                        <!-- インライン編集フォーム（名前・所属・パスワードのみ編集可能・管理者フラグ変更は不可） -->
                         <div id="edit-user-form-${escapeHtml(u.id)}" class="hidden pt-2 border-t border-stone-200 space-y-2 bg-stone-50 p-2.5 rounded">
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <div>
@@ -1531,7 +1946,7 @@
         }
 
         function saveEditedUserRow(userId) {
-            if (!isCurrentUserAdmin()) return;
+            if (!isCurrentUserAdmin() || !currentUser) return;
             const target = usersDatabase.find(u => u.id === userId);
             if (!target) return;
 
@@ -1548,16 +1963,103 @@
                 return;
             }
 
+            const changes = [];
+            if (target.name !== newName) changes.push(`名前: ${target.name} → ${newName}`);
+            if (target.org !== newOrg) changes.push(`所属: ${target.org} → ${newOrg}`);
+            if ((target.password || '') !== newPass) changes.push(`パスワード変更`);
+
+            if (changes.length === 0) {
+                toggleEditUserRow(userId);
+                return;
+            }
+
             target.name = newName;
             target.org = newOrg;
             target.password = newPass;
+
+            const actorNameAfter = (currentUser.id === target.id) ? newName : currentUser.name;
+            recordAccountChangeLog(
+                actorNameAfter,
+                currentUser.id,
+                target.name,
+                target.id,
+                'update',
+                changes.join(' / ')
+            );
 
             syncUserToDriveSheet(target);
             if (currentUser && currentUser.id === target.id) {
                 completeLogin(target, false);
             }
             renderUserDbTable();
+            renderAccountChangeHistory();
             showToast(`${target.name} のアカウント情報を更新しました`, "success");
+        }
+
+        function adminDeleteAccount(userId) {
+            if (!isCurrentUserAdmin() || !currentUser) return;
+            if (currentUser.id === userId) {
+                showToast("ログイン中の自分自身のアカウントは削除できません", "error");
+                return;
+            }
+            const target = usersDatabase.find(u => u.id === userId);
+            if (!target) return;
+
+            showConfirmDialog(
+                "アカウント削除確認",
+                `「${target.name}（${target.id}）」のアカウントを削除し、スプレッドシートからも削除しますか？`,
+                () => {
+                    usersDatabase = usersDatabase.filter(u => u.id !== userId);
+                    saveSessionCookie(currentUser.id);
+
+                    recordAccountChangeLog(
+                        currentUser.name,
+                        currentUser.id,
+                        target.name,
+                        target.id,
+                        'delete',
+                        `ID: ${target.id} / 所属: ${target.org}`
+                    );
+
+                    queueOrSendUserSync(target, 'deleteUser');
+                    renderUserDbTable();
+                    renderAccountChangeHistory();
+                    showToast(`${target.name} のアカウントを削除しました`, "info");
+                }
+            );
+        }
+
+        function renderAccountChangeHistory() {
+            const listEl = document.getElementById('account-change-history-list');
+            const countEl = document.getElementById('account-history-count');
+            if (!listEl || !isCurrentUserAdmin()) return;
+
+            if (countEl) {
+                countEl.textContent = accountChangeLogs.length > 0 ? `全${accountChangeLogs.length}件` : '';
+            }
+
+            if (accountChangeLogs.length === 0) {
+                listEl.innerHTML = `<div class="bg-white p-3 rounded border border-dashed border-stone-300 text-center text-[11px] text-stone-400">まだアカウントの変更履歴はありません</div>`;
+                return;
+            }
+
+            listEl.innerHTML = accountChangeLogs.map(log => {
+                const badgeColor = log.actionType === 'create'
+                    ? 'bg-emerald-100 text-emerald-900'
+                    : (log.actionType === 'delete' ? 'bg-red-100 text-red-900' : 'bg-amber-100 text-amber-900');
+                const badgeText = log.actionType === 'create' ? '新規発行' : (log.actionType === 'delete' ? '削除' : '変更');
+
+                return `
+                    <div class="bg-white p-2.5 rounded border border-stone-200 text-[11px] space-y-1 shadow-2xs">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${badgeText}</span>
+                            <span class="font-mono text-[10px] text-stone-500">${escapeHtml(log.datetime || '')}</span>
+                        </div>
+                        <p class="font-bold text-stone-800 leading-snug">${escapeHtml(log.headline || '')}</p>
+                        ${log.detail ? `<p class="text-[10px] text-stone-600 font-mono">${escapeHtml(log.detail)}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
         }
 
         // タブごとの用途・使い方ガイド定義
@@ -1913,6 +2415,12 @@
                 return;
             }
 
+            const settingsSubModal = document.getElementById('settings-sub-modal');
+            if (settingsSubModal && !settingsSubModal.classList.contains('hidden')) {
+                closeSettingsSubModal(true);
+                return;
+            }
+
             const dbAdminModal = document.getElementById('db-admin-modal');
             if (dbAdminModal && !dbAdminModal.classList.contains('hidden')) {
                 closeDbAdminModal(true);
@@ -1963,32 +2471,22 @@
                 return;
             }
 
-            const msg = hasUnsavedChanges
-                ? "未保存の変更データがあります。保存せずにアプリを終了しますか？"
-                : "共同施工管理ツールを終了しますか？";
-
-            showConfirmDialog(
-                "アプリの終了確認",
-                msg,
-                () => {
-                    hasUnsavedChanges = false;
-                    showToast("アプリを終了しました", "info");
-                    try { window.close(); } catch (e) {}
-                    setTimeout(() => {
-                        document.body.innerHTML = `
-                            <div class="h-screen w-screen bg-[#171b22] text-[#fdfbf7] flex flex-col items-center justify-center p-6 text-center space-y-4">
-                                <i class="fa-solid fa-circle-check text-4xl text-[#d6b779]"></i>
-                                <h2 class="font-mincho text-lg sm:text-xl font-bold tracking-wider">東上プライベートホールみずほ台</h2>
-                                <p class="text-xs tracking-widest text-[#d6b779]">フローリスト石原&amp;ユー花園　共同施工管理ツール</p>
-                                <p class="text-sm text-stone-300 pt-2">ツールを終了しました。ブラウザのタブを閉じてください。</p>
-                                <button onclick="location.reload()" class="mt-4 px-5 py-2.5 bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded-md text-xs font-bold tracking-wider transition">
-                                    ツールを再起動する
-                                </button>
-                            </div>
-                        `;
-                    }, 350);
-                }
-            );
+            if (hasUnsavedChanges) {
+                showConfirmDialog(
+                    "確認",
+                    "未保存の変更データがあります。ポータル画面へ戻りますか？",
+                    () => {
+                        hasUnsavedChanges = false;
+                        location.href = "index.html";
+                    }
+                );
+                return;
+            }
+            if (document.referrer && document.referrer.indexOf(location.host) !== -1) {
+                history.back();
+            } else {
+                location.href = "index.html";
+            }
         }
 
         function setupNavigationGuards() {
@@ -2201,7 +2699,25 @@
             }
             const area = areaData[areaId];
             if (!area) return;
+            // すでにそのピンが拡大選択中（タイトルウィンドウ表示中）なら別画面（詳細モーダル）を開く
+            if (isMapZoomed && currentSelectedAreaId === areaId) {
+                playBeepSound();
+                openAreaModal(areaId);
+                return;
+            }
             selectMapArea(areaId, area.pinX, area.pinY);
+        }
+
+        function openSelectedPinDetailModal() {
+            if (!currentSelectedAreaId) return;
+            playBeepSound();
+            openAreaModal(currentSelectedAreaId);
+        }
+
+        function closePinTitlePopover(isBackAction = false) {
+            const popover = document.getElementById('pin-title-popover');
+            if (popover) popover.classList.add('hidden');
+            resetMapZoom(isBackAction);
         }
 
         function openPinEditorModal(areaId = null, xPercent = 50, yPercent = 50) {
@@ -2380,23 +2896,26 @@
             }
             isMapZoomed = true;
             const inner = document.getElementById('map-container-inner');
-            inner.style.transformOrigin = `${xPercent}% ${yPercent}%`;
-            inner.style.transform = 'scale(1.65)';
+            if (inner) {
+                inner.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+                inner.style.transform = 'scale(1.75)';
+            }
 
-            const indicator = document.getElementById('zoom-indicator');
-            indicator.classList.remove('hidden');
-            document.getElementById('zoom-area-label').textContent = `${area.title} 拡大表示中`;
-
-            setTimeout(() => {
-                openAreaModal(areaId);
-            }, 250);
+            const popover = document.getElementById('pin-title-popover');
+            const popoverTitle = document.getElementById('pin-popover-title');
+            const popoverDot = document.getElementById('pin-popover-dot');
+            if (popoverTitle) popoverTitle.textContent = area.title;
+            if (popoverDot) popoverDot.style.backgroundColor = area.color || '#dc2626';
+            if (popover) popover.classList.remove('hidden');
         }
 
         function resetMapZoom(isBackAction = false) {
             isMapZoomed = false;
+            currentSelectedAreaId = null;
             const inner = document.getElementById('map-container-inner');
-            inner.style.transform = 'scale(1)';
-            document.getElementById('zoom-indicator').classList.add('hidden');
+            if (inner) inner.style.transform = 'scale(1)';
+            const popover = document.getElementById('pin-title-popover');
+            if (popover) popover.classList.add('hidden');
             if (!isBackAction && navigationHistory[navigationHistory.length - 1] === 'map:zoom') {
                 navigationHistory.pop();
             }
