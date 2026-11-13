@@ -4,16 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>東上プライベートホールみずほ台 - 共同施工管理ツール</title>
-    
-    <!-- PWA設定 -->
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#1f242d">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="みずほ台施工管理">
-    <link rel="apple-touch-icon" href="./icon-192.png">
-
-    
     <!-- Tailwind CSSの読み込み -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts (Inter, Noto Sans JP, Shippori Mincho) -->
@@ -130,7 +120,7 @@
                     <span id="header-admin-tag" class="hidden px-1.5 py-0.5 bg-red-900/80 text-red-100 border border-red-600/60 rounded text-[10px] font-bold">管理者</span>
                 </div>
                 <button type="button" id="header-account-btn" onclick="openDbAdminModal()" class="px-2.5 py-1 bg-stone-800 hover:bg-stone-700 text-[#ebd29d] border border-amber-700/50 rounded text-[11px] font-bold transition whitespace-nowrap">
-                    <i class="fa-solid fa-user-gear mr-1"></i>アカウント管理
+                    <i class="fa-solid fa-gear mr-1"></i>設定
                 </button>
             </div>
         </div>
@@ -802,25 +792,48 @@
     </div>
 
     <!-- ==========================================
-         モーダル6: アカウント管理モーダル（全員：ログアウト / 管理者のみ：全アカウント編集）
+         モーダル6: 設定モーダル（音の設定・アカウント情報・管理者ツール・更新履歴・クレジット）
          ========================================== -->
     <div id="db-admin-modal" class="hidden fixed inset-0 bg-stone-950/75 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div class="bg-[#fdfbf7] w-full sm:max-w-xl rounded-t-lg sm:rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-stone-300">
             <div class="px-4 sm:px-5 py-3.5 bg-[#1f242d] text-[#fdfbf7] flex items-center justify-between border-b border-amber-700/40">
                 <h3 class="text-sm sm:text-base font-bold flex items-center gap-2">
-                    <i class="fa-solid fa-user-gear text-[#d6b779]"></i>
-                    <span>アカウント管理</span>
+                    <i class="fa-solid fa-gear text-[#d6b779]"></i>
+                    <span>設定</span>
                 </h3>
                 <button type="button" onclick="closeDbAdminModal()" class="p-1.5 text-stone-300 hover:text-white rounded-md">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
 
-            <div class="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1 text-xs">
-                <!-- 現在のログイン情報＆ログアウト（一般・管理者共通） -->
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1 text-xs">
+                <!-- 1. 音の設定 -->
+                <div class="bg-white p-3.5 rounded-md border border-stone-200 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-volume-high text-[#8c672a]"></i>
+                            <span>音の設定</span>
+                        </span>
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="setting-sound-toggle" checked onchange="toggleSoundSetting(this.checked)" class="w-4 h-4 accent-[#3d6b5e] rounded">
+                            <span id="setting-sound-status-label" class="font-bold text-stone-700">効果音 ON</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-stone-100 text-[11px] text-stone-500">
+                        <span>館内図ピンタップ時の操作音</span>
+                        <button type="button" onclick="playBeepSound(true)" class="px-2.5 py-1 bg-stone-100 hover:bg-amber-50 text-stone-700 border border-stone-300 rounded font-bold transition whitespace-nowrap">
+                            <i class="fa-solid fa-play mr-1 text-[#8c672a]"></i>テスト再生
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. アカウント情報 -->
                 <div class="bg-white p-3.5 rounded-md border border-stone-200 space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="font-bold text-stone-700">現在のログインアカウント</span>
+                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-id-card text-[#3d6b5e]"></i>
+                            <span>アカウント情報</span>
+                        </span>
                         <span id="modal-sync-status" class="text-[10px] text-stone-500">自動同期有効</span>
                     </div>
                     <div id="current-user-detail-card" class="p-2.5 bg-stone-50 rounded border border-stone-200 space-y-1"></div>
@@ -832,16 +845,57 @@
                     </div>
                 </div>
 
-                <!-- 管理者のみ表示：登録アカウントデータベース一覧＆編集 -->
-                <div id="admin-account-db-section" class="hidden space-y-2 pt-1 border-t border-stone-200">
-                    <div class="flex flex-col gap-0.5 pt-1">
+                <!-- 3. 管理者ツール（管理者専用、アカウント管理） -->
+                <div id="admin-account-db-section" class="hidden bg-amber-50/50 p-3.5 rounded-md border border-amber-300/80 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
                         <span class="font-bold text-stone-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-table text-[#3d6b5e]"></i>
-                            <span>管理者専用：登録アカウント一覧（名前・所属・パスワード編集）</span>
+                            <i class="fa-solid fa-screwdriver-wrench text-red-700"></i>
+                            <span>管理者ツール（管理者専用・アカウント管理）</span>
                         </span>
                     </div>
                     <div id="user-db-table-wrap" class="space-y-2.5">
                         <!-- JSでアカウント一覧を描画 -->
+                    </div>
+                </div>
+
+                <!-- 4. 更新履歴 -->
+                <div class="bg-white rounded-md border border-stone-200 overflow-hidden">
+                    <button type="button" onclick="toggleSettingsAccordion('changelog')" class="w-full px-3.5 py-2.5 bg-stone-50 hover:bg-stone-100 flex items-center justify-between text-left transition">
+                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock-rotate-left text-[#8c672a]"></i>
+                            <span>更新履歴</span>
+                        </span>
+                        <i id="settings-acc-icon-changelog" class="fa-solid fa-chevron-down text-xs text-stone-500 transition-transform duration-200"></i>
+                    </button>
+                    <div id="settings-acc-body-changelog" class="hidden px-3.5 py-3 border-t border-stone-200 space-y-2 text-[11px] text-stone-700 leading-relaxed">
+                        <div class="border-l-2 border-[#8c672a] pl-2.5">
+                            <div class="font-bold text-stone-800">Ver 1.4（2026/11/13）</div>
+                            <p>・館内図を最新図面に差し替え、細身まち針ピン（カラー・サイズ自由調整＆新規ページ作成）に対応<br>・メニューを「設定」へ統合（音の設定・アカウント情報・管理者ツール・更新履歴・クレジット）</p>
+                        </div>
+                        <div class="border-l-2 border-stone-300 pl-2.5">
+                            <div class="font-bold text-stone-800">Ver 1.2（2026/11/12）</div>
+                            <p>・施工記録の個人情報モザイク処理機能、什器階層ツリー台帳および編集履歴記録を実装</p>
+                        </div>
+                        <div class="border-l-2 border-stone-300 pl-2.5">
+                            <div class="font-bold text-stone-800">Ver 1.0（2026/11/01）</div>
+                            <p>・東上プライベートホールみずほ台 共同施工管理ツール 初版リリース</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. クレジット -->
+                <div class="bg-white rounded-md border border-stone-200 overflow-hidden">
+                    <button type="button" onclick="toggleSettingsAccordion('credits')" class="w-full px-3.5 py-2.5 bg-stone-50 hover:bg-stone-100 flex items-center justify-between text-left transition">
+                        <span class="font-bold text-stone-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-[#3d6b5e]"></i>
+                            <span>クレジット</span>
+                        </span>
+                        <i id="settings-acc-icon-credits" class="fa-solid fa-chevron-down text-xs text-stone-500 transition-transform duration-200"></i>
+                    </button>
+                    <div id="settings-acc-body-credits" class="hidden px-3.5 py-3 border-t border-stone-200 space-y-1.5 text-[11px] text-stone-700 leading-relaxed">
+                        <p class="font-bold text-stone-800">東上プライベートホールみずほ台 共同施工管理ツール</p>
+                        <p>運用：フローリスト石原 &amp; 株式会社ユー花園</p>
+                        <p>企画・開発：関 貴文（株式会社ユー花園 所沢支店 施工課）</p>
                     </div>
                 </div>
             </div>
@@ -1030,7 +1084,7 @@
             },
             {
                 id: "FI-SUZUKI-002",
-                name: "鈴木",　
+                name: "鈴木",
                 org: "FI",
                 isAdmin: 0,
                 deviceHash: "DEV-FI000002",
@@ -1374,11 +1428,16 @@
             }
         }
 
-        // アカウント管理画面（全員：自分のログイン情報＆ログアウト / 管理者のみ：全アカウント編集も表示）
+        // 設定モーダル（音の設定・アカウント情報・管理者ツール・更新履歴・クレジット）
         function openDbAdminModal() {
             if (!currentUser) return;
             pushNavState('modal:db-admin');
             autoSyncAll();
+
+            const soundToggle = document.getElementById('setting-sound-toggle');
+            const soundLabel = document.getElementById('setting-sound-status-label');
+            if (soundToggle) soundToggle.checked = isSoundEnabled;
+            if (soundLabel) soundLabel.textContent = isSoundEnabled ? '効果音 ON' : '効果音 OFF';
 
             const detailCard = document.getElementById('current-user-detail-card');
             if (detailCard && currentUser) {
@@ -2000,7 +2059,35 @@
             }
         }
 
-        function playBeepSound() {
+        let isSoundEnabled = loadSoundSetting();
+
+        function loadSoundSetting() {
+            try {
+                const saved = localStorage.getItem('mizuhodai_sound_enabled');
+                if (saved === '0') return false;
+            } catch (e) {}
+            return true;
+        }
+
+        function toggleSoundSetting(enabled) {
+            isSoundEnabled = !!enabled;
+            try {
+                localStorage.setItem('mizuhodai_sound_enabled', isSoundEnabled ? '1' : '0');
+            } catch (e) {}
+            const label = document.getElementById('setting-sound-status-label');
+            if (label) label.textContent = isSoundEnabled ? '効果音 ON' : '効果音 OFF';
+            if (isSoundEnabled) playBeepSound(true);
+        }
+
+        function toggleSettingsAccordion(key) {
+            const body = document.getElementById(`settings-acc-body-${key}`);
+            const icon = document.getElementById(`settings-acc-icon-${key}`);
+            if (body) body.classList.toggle('hidden');
+            if (icon) icon.classList.toggle('rotate-180');
+        }
+
+        function playBeepSound(forcePlay = false) {
+            if (!isSoundEnabled && !forcePlay) return;
             try {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 const ctx = new AudioCtx();
@@ -3605,15 +3692,6 @@
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
         }
-        
-               // PWA（Service Worker）の登録
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(() => {});
-            });
-        }
-
-        
     </script>
 </body>
 </html>
