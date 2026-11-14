@@ -1122,6 +1122,10 @@
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 2.5（2026/11/14）</div>
+                            <p class="mt-0.5">・編集でメイン写真が表示されない問題を修正（写真の読み込み先を変更）<br>・サブ画像のサムネイルを写真の下に並べる形に戻した<br>・表示の高速化（切り替え用画像の事前読み込み、内容が変わらないときの再描画を省略）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.4（2026/11/14）</div>
                             <p class="mt-0.5">・サブ写真にもモザイク加工ができるようにした（サムネイル右下のペンから編集。ペン／移動切替・ブラシ太さ・アンドゥ／リドゥ・クリア対応）</p>
                         </div>
@@ -4335,11 +4339,11 @@
                 return `
                     <div class="bg-white rounded-md border ${rec.locked ? 'border-amber-400' : 'border-stone-200'} shadow-2xs overflow-hidden flex flex-col sm:flex-row">
                         <div class="relative sm:w-2/5 h-44 sm:h-auto bg-stone-100 flex-none">
-                            <img src="${rec.image}" alt="施工記録" onclick="openImageViewer('${escapeHtml(rec.id)}', this.src)" class="w-full h-full object-cover cursor-pointer">
-                            ${v21ThumbStripHtml(rec)}
+                            <img src="${v25CardUrl(rec.image)}" alt="施工記録" loading="lazy" decoding="async" onclick="openImageViewer('${escapeHtml(rec.id)}', this.src)" class="w-full h-full object-cover cursor-pointer">
                         </div>
                         <div class="p-4 flex-1 flex flex-col justify-between space-y-2">
                             <div>
+                                ${v21ThumbStripHtml(rec)}
                                 <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-stone-500 mb-1.5">
                                     <div class="flex flex-wrap items-center gap-1.5">
                                         <span class="font-bold text-stone-700 whitespace-nowrap">${escapeHtml(formatJapaneseDate(rec.date))}</span>
@@ -5911,17 +5915,11 @@
         if (!subsOnly.length) return '';
         const hasMain = rec.image && String(rec.image).indexOf('placehold.co') < 0;
         const urls = (hasMain ? [rec.image] : []).concat(subsOnly);
-        const thumbs = urls.map((u, i) => '<img src="' + escapeHtml(u) + '" data-full="' + escapeHtml(u) + '" onclick="event.stopPropagation(); v21SwapCardImage(this)" alt="写真' + (i + 1) + '" class="v21-thumb w-14 h-14 object-cover rounded-md cursor-pointer shadow border-2 ' + (i === 0 ? 'border-[#8c672a]' : 'border-white/80') + '">').join('');
-        return '<div class="absolute bottom-1.5 left-1.5 right-1.5 flex gap-1.5 overflow-x-auto">' + thumbs + '</div>';
+        const thumbs = urls.map((u, i) => '<img src="' + escapeHtml(v25ThumbUrl(u)) + '" data-full="' + escapeHtml(u) + '" loading="lazy" onclick="event.stopPropagation(); v21SwapCardImage(this)" alt="写真' + (i + 1) + '" class="v21-thumb w-14 h-14 object-cover rounded-md cursor-pointer shadow border-2 ' + (i === 0 ? 'border-[#8c672a]' : 'border-white') + '">').join('');
+        return '<div class="flex gap-1.5 overflow-x-auto mb-1.5 py-0.5">' + thumbs + '</div>';
     }
     function v21CardImageUrl(u) {
-        if (!u) return u;
-        if (u.indexOf('drive.google.com/thumbnail') >= 0) {
-            if (/[?&]sz=/.test(u)) return u.replace(/([?&])sz=[^&]*/, '$1sz=w800');
-            return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'sz=w800';
-        }
-        if (u.indexOf('lh3.googleusercontent.com/d/') >= 0 && !/=w\d+/.test(u)) return u + '=w800';
-        return u;
+        return v25CardUrl(u);
     }
     function v21SwapCardImage(thumbEl) {
         let card = thumbEl;
@@ -5934,9 +5932,9 @@
         if (main) main.src = v21CardImageUrl(thumbEl.getAttribute('data-full') || thumbEl.src);
         card.querySelectorAll('.v21-thumb').forEach(t => {
             t.classList.remove('border-[#8c672a]');
-            t.classList.add('border-white/80');
+            t.classList.add('border-white');
         });
-        thumbEl.classList.remove('border-white/80');
+        thumbEl.classList.remove('border-white');
         thumbEl.classList.add('border-[#8c672a]');
     }
     function v21SetMosaicMode(mode) {
@@ -6085,7 +6083,7 @@
         const ov = document.getElementById('v24-submosaic');
         ov.classList.remove('hidden'); ov.classList.add('flex');
         v24SetMode('pen');
-        const src = s.src.indexOf('data:') === 0 ? s.src : v20LargeImageUrl(s.src);
+        const src = s.src.indexOf('data:') === 0 ? s.src : v25CanvasImageUrl(s.src);
         const img = new Image();
         img.crossOrigin = 'Anonymous';
         img.onload = function () {
@@ -6139,6 +6137,62 @@
         const end = () => { if (window.V24.drawing) v24HistPush(); window.V24.drawing = false; };
         cv.addEventListener('pointerup', end);
         cv.addEventListener('pointercancel', end);
+    }
+
+    // ===== Ver 2.5 編集写真の読込修正・表示高速化 =====
+    function v25DriveId(u) {
+        if (!u) return '';
+        let m = u.match(/[?&]id=([\w-]{10,})/) || u.match(/lh3\.googleusercontent\.com\/d\/([\w-]{10,})/) || u.match(/\/file\/d\/([\w-]{10,})/);
+        return m ? m[1] : '';
+    }
+    function v25CanvasImageUrl(u) {
+        const id = v25DriveId(u);
+        return id ? 'https://lh3.googleusercontent.com/d/' + id + '=w1600' : u;
+    }
+    function v25CardUrl(u) {
+        const id = v25DriveId(u);
+        if (id) return 'https://lh3.googleusercontent.com/d/' + id + '=w1000';
+        if (u && u.indexOf('lh3.googleusercontent.com/d/') >= 0) return u.replace(/=w\d+/, '=w1000');
+        return u;
+    }
+    function v25ThumbUrl(u) {
+        const id = v25DriveId(u);
+        if (id) return 'https://lh3.googleusercontent.com/d/' + id + '=w200';
+        if (u && u.indexOf('lh3.googleusercontent.com/d/') >= 0) return u.replace(/=w\d+/, '=w200');
+        return u;
+    }
+    window.V25 = { preloaded: {}, lastSig: '' };
+    function v25RenderSignature() {
+        try {
+            const recPart = (constructionRecords || []).map(r => [r.id, r.date, r.code, r.notes, r.author, r.org, r.locked ? 1 : 0, r.image, (r.equipmentIds || []).join(','), (r.subImages || []).join(','), r.updatedAt || ''].join('|')).join(';');
+            const eqPart = (equipmentData || []).map(e => [e.id, e.code, e.name, e.category].join('|')).join(';');
+            const st = window.v17State || {};
+            const stPart = [st.mode || '', st.month || '', st.org || '', st.keyword || '', st.calYear || '', st.calMonth || ''].join('|');
+            const clPart = (window.V18 && window.V18.claims || []).map(c => c.type + ':' + c.targetId + ':' + c.userId).join(';');
+            const userPart = currentUser ? currentUser.id + ':' + (currentUser.isAdmin ? 1 : 0) : '';
+            return [recPart, eqPart, stPart, clPart, userPart].join('#');
+        } catch (e) { return ''; }
+    }
+    if (typeof renderConstructionList === 'function') {
+        const origRenderV25 = renderConstructionList;
+        renderConstructionList = function () {
+            const container = document.getElementById('construction-list');
+            const sig = v25RenderSignature();
+            if (sig && container && container.children.length > 0 && sig === window.V25.lastSig) return;
+            const r = origRenderV25.apply(this, arguments);
+            window.V25.lastSig = v25RenderSignature();
+            try {
+                (constructionRecords || []).forEach(rec => {
+                    if (!rec.subImages || !rec.subImages.length) return;
+                    [rec.image].concat(rec.subImages).forEach(u => {
+                        if (!u) return;
+                        const url = v25CardUrl(u);
+                        if (!window.V25.preloaded[url]) { window.V25.preloaded[url] = 1; const im = new Image(); im.src = url; }
+                    });
+                });
+            } catch (e) {}
+            return r;
+        };
     }
 
     (function initV21() {
@@ -6298,7 +6352,8 @@
                 if (ph) ph.classList.add('hidden');
             } catch (e) {}
         };
-        img.src = v20LargeImageUrl(rec.image);
+        img.onerror = function () { showToast('メイン写真を読み込めませんでした（通信環境をご確認ください）', 'error'); };
+        img.src = v25CanvasImageUrl(rec.image);
     }
     (function initV22() {
         const mc = document.getElementById('mosaic-canvas');
