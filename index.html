@@ -152,7 +152,7 @@
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-[13px] text-stone-800">
                 <span class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-calendar-check text-[#8c672a]"></i>施工担当</span>
                 <span id="assignee-current">今月: 読み込み中…</span>
-                <span id="assignee-next" class="text-stone-500"></span>
+
             </div>
             <details class="mt-1.5">
                 <summary class="text-[11px] text-[#8c672a] font-bold cursor-pointer">担当ルールと2027年の担当表を見る</summary>
@@ -1099,8 +1099,16 @@
                 <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.7（2026/11/14）</div>
+                            <p class="mt-0.5">・施工記録に「リスト／カレンダー」切替と絞り込み（月・担当・キーワード）を追加（タブは増やさず施工記録内へ）<br>・カレンダーは六曜・担当・件数つき。日付を押すとその日の記録が下に出ます<br>・什器管理で什器を広げると「使用履歴」が見られるように</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.6.1（2026/11/14）</div>
+                            <p class="mt-0.5">・担当バナーを今月のみの表示に簡素化<br>・日付表示を「2026年11月18日（水）・先勝」のような日本式＋六曜に統一（施工日・コメント・履歴など）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.6（2026/11/14）</div>
-                            <p class="mt-0.5">・今月／来月の施工担当（2026年内はフローリスト石原、2027年以降は奇数月＝ユー花園／偶数月＝フローリスト石原）をトップに表示し、施工記録にも担当バッジを表示<br>・共同カタログ（祭壇パターン）を什器管理に追加。パターンを選ぶと施工記録の使用什器へ自動セット（共同カタログ専用GASへ接続済み・自動同期）<br>・設定にバックアップ（JSON書き出し／読み込み）を追加<br>・パスワードをハッシュ化して保存するよう変更（ログイン成功時に自動で移行。管理画面ではパスワードを表示しません）<br>・同一エリアIDの重複データを取り込まないようマージ処理を追加</p>
+                            <p class="mt-0.5">・今月の施工担当（2026年内はフローリスト石原、2027年以降は奇数月＝ユー花園／偶数月＝フローリスト石原）をトップに表示し、施工記録にも担当バッジを表示<br>・共同カタログ（祭壇パターン）を什器管理に追加。パターンを選ぶと施工記録の使用什器へ自動セット（共同カタログ専用GASへ接続済み・自動同期）<br>・設定にバックアップ（JSON書き出し／読み込み）を追加<br>・パスワードをハッシュ化して保存するよう変更（ログイン成功時に自動で移行。管理画面ではパスワードを表示しません）<br>・同一エリアIDの重複データを取り込まないようマージ処理を追加</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.5（2026/11/13）</div>
@@ -2463,8 +2471,8 @@
                         </div>
                         <div class="text-[10px] text-stone-500 font-mono flex flex-wrap gap-x-3 gap-y-0.5">
                             <span>PW: <strong class="text-stone-700">${isHashedPassword(u.password) ? '設定済み（保護のため非表示）' : escapeHtml(u.password || '未設定')}</strong></span>
-                            <span>登録: ${escapeHtml(u.createdAt || '-')}</span>
-                            <span>最終ログイン: ${escapeHtml(u.lastLogin || '-')}</span>
+                            <span>登録: ${escapeHtml(u.createdAt ? formatJapaneseDateTime(u.createdAt) : '-')}</span>
+                            <span>最終ログイン: ${escapeHtml(u.lastLogin ? formatJapaneseDateTime(u.lastLogin) : '-')}</span>
                         </div>
                         <!-- インライン編集フォーム（名前・所属・パスワードのみ編集可能・管理者フラグ変更は不可） -->
                         <div id="edit-user-form-${escapeHtml(u.id)}" class="hidden pt-2 border-t border-stone-200 space-y-2 bg-stone-50 p-2.5 rounded">
@@ -2611,7 +2619,7 @@
                     <div class="bg-white p-2.5 rounded border border-stone-200 text-[11px] space-y-1 shadow-2xs">
                         <div class="flex items-center justify-between gap-2">
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${badgeText}</span>
-                            <span class="font-mono text-[10px] text-stone-500">${escapeHtml(log.datetime || '')}</span>
+                            <span class="font-mono text-[10px] text-stone-500">${escapeHtml(formatJapaneseDateTime(log.datetime || ''))}</span>
                         </div>
                         <p class="font-bold text-stone-800 leading-snug">${escapeHtml(log.headline || '')}</p>
                         ${log.detail ? `<p class="text-[10px] text-stone-600 font-mono">${escapeHtml(log.detail)}</p>` : ''}
@@ -3778,7 +3786,7 @@
                             ${getOrgBadgeHtml(c.org)}
                             ${isLocked ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded text-[10px] font-bold"><i class="fa-solid fa-lock text-[9px]"></i>固定</span>` : ''}
                         </div>
-                        <span class="font-mono text-[11px] text-stone-500">${escapeHtml(c.datetime || c.date || '')}</span>
+                        <span class="font-mono text-[11px] text-stone-500">${escapeHtml(formatJapaneseDateTime(c.datetime || c.date || ''))}</span>
                     </div>
                     <p id="comment-text-${escapeHtml(c.id)}" class="text-stone-700 leading-relaxed break-words">${escapeHtml(c.text)}</p>
                     <div id="comment-edit-box-${escapeHtml(c.id)}" class="hidden mt-1.5 space-y-1.5">
@@ -4238,7 +4246,7 @@
                             <div>
                                 <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-stone-500 mb-1.5">
                                     <div class="flex items-center gap-1.5">
-                                        <span class="font-bold text-stone-700">${rec.date}</span>
+                                        <span class="font-bold text-stone-700">${escapeHtml(formatJapaneseDate(rec.date))}</span>
                                         <span class="font-bold text-stone-800">${escapeHtml(rec.author || '')}</span>
                                         ${getOrgBadgeHtml(rec.org)}
                                         ${getAssigneeBadgeHtml(rec.date)}
@@ -4339,7 +4347,7 @@
                         <div class="flex items-center gap-1.5">
                             ${log.author ? `<span class="font-bold text-stone-800 text-[11px]">${escapeHtml(log.author)}</span>` : ''}
                             ${getOrgBadgeHtml(log.org)}
-                            <span class="font-mono"><i class="fa-regular fa-clock mr-0.5"></i>${escapeHtml(log.date)}</span>
+                            <span class="font-mono"><i class="fa-regular fa-clock mr-0.5"></i>${escapeHtml(formatJapaneseDateTime(log.date))}</span>
                         </div>
                         <span class="font-mono bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200 text-stone-600">
                             <i class="fa-solid fa-mobile-screen mr-0.5"></i>${escapeHtml(log.device || '端末情報なし')}
@@ -4878,6 +4886,396 @@
         } catch (e) {}
         return null;
     }
+    // ===== 日付の日本式表示＋六曜（旧暦ベースで算出。国立天文台の暦と照合済みの計算） =====
+    const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
+    const ROKUYO_NAMES = ['大安', '赤口', '先勝', '友引', '先負', '仏滅'];
+    function rkJulianDay(y, m, d, hourUTC) {
+        if (m <= 2) { y -= 1; m += 12; }
+        const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
+        return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + B - 1524.5 + (hourUTC || 0) / 24;
+    }
+    function rkNewMoonJDE(k) {
+        const T = k / 1236.85, T2 = T * T, T3 = T2 * T, T4 = T3 * T;
+        let jde = 2451550.09766 + 29.530588861 * k + 0.00015437 * T2 - 0.000000150 * T3 + 0.00000000073 * T4;
+        const M = (357.529 + 35999.05030 * T - 0.0001559 * T2 - 0.00000048 * T3) % 360;
+        const Mp = (134.963 + 477198.8676313 * T + 0.0089970 * T2 + 0.00001432 * T3 - 0.000000068 * T4) % 360;
+        const F = (93.272 + 483202.0175233 * T - 0.0036539 * T2 - 0.00000288 * T3 + 0.000000011 * T4) % 360;
+        const E = 1 - 0.002516 * T - 0.0000074 * T2;
+        const s = (a) => Math.sin(a * Math.PI / 180);
+        jde += -0.40720 * s(Mp) + 0.17241 * E * s(M) + 0.01608 * s(2 * Mp) + 0.01039 * s(2 * F)
+             + 0.00739 * E * s(Mp - M) - 0.00514 * E * s(Mp + M) + 0.00208 * E * E * s(2 * M)
+             - 0.00111 * s(Mp - 2 * F) - 0.00057 * s(Mp + 2 * F) + 0.00056 * E * s(2 * Mp + M)
+             - 0.00042 * s(3 * Mp) + 0.00042 * E * s(M + 2 * F) + 0.00038 * E * s(M - 2 * F)
+             - 0.00024 * E * s(2 * Mp - M) - 0.00017 * s((218.3165 + 481267.8813 * T) % 360);
+        return jde;
+    }
+    function rkJdToJstDate(jd) {
+        const z = Math.floor(jd + 0.5 + 9 / 24);
+        let A = z;
+        if (A >= 2299161) { const al = Math.floor((A - 1867216.25) / 36524.25); A = A + 1 + al - Math.floor(al / 4); }
+        const B = A + 1524, C = Math.floor((B - 122.1) / 365.25), D = Math.floor(365.25 * C), E2 = Math.floor((B - D) / 30.6001);
+        const day = B - D - Math.floor(30.6001 * E2);
+        const month = E2 < 14 ? E2 - 1 : E2 - 13;
+        const year = month > 2 ? C - 4716 : C - 4715;
+        return { y: year, m: month, d: day };
+    }
+    function rkJstSerial(y, m, d) { return Math.floor(rkJulianDay(y, m, d, 3) + 0.5); }
+    function rkSakuSerial(k) { const dt = rkJdToJstDate(rkNewMoonJDE(k)); return rkJstSerial(dt.y, dt.m, dt.d); }
+    function rkFindK(y, m, d) {
+        const target = rkJstSerial(y, m, d);
+        let k = Math.round((rkJulianDay(y, m, d, 3) - 2451550.09766) / 29.530588861);
+        while (rkSakuSerial(k) > target) k--;
+        while (rkSakuSerial(k + 1) <= target) k++;
+        return { k: k, lunarDay: target - rkSakuSerial(k) + 1 };
+    }
+    function rkSunLongitude(jd) {
+        const T = (jd - 2451545.0) / 36525;
+        const L0 = (280.46646 + T * (36000.76983 + 0.0003032 * T)) % 360;
+        const M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
+        const C = (1.914602 - T * (0.004817 + 0.000014 * T)) * Math.sin(M * Math.PI / 180)
+                + (0.019993 - 0.000101 * T) * Math.sin(2 * M * Math.PI / 180) + 0.000289 * Math.sin(3 * M * Math.PI / 180);
+        const lon = L0 + C - 0.00569 - 0.00478 * Math.sin((125.04 - 1934.136 * T) * Math.PI / 180);
+        return ((lon % 360) + 360) % 360;
+    }
+    function rkMonthJstMidnights(k) {
+        const d1 = rkJdToJstDate(rkNewMoonJDE(k));
+        const d2 = rkJdToJstDate(rkNewMoonJDE(k + 1));
+        return [rkJulianDay(d1.y, d1.m, d1.d, -9), rkJulianDay(d2.y, d2.m, d2.d, -9)];
+    }
+    function rkChukiCount(k) {
+        const mm = rkMonthJstMidnights(k);
+        const lonA = rkSunLongitude(mm[0]), lonB = rkSunLongitude(mm[1]);
+        const adv = ((lonB - lonA) % 360 + 360) % 360;
+        return Math.floor((lonA + adv) / 30) - Math.floor(lonA / 30);
+    }
+    function rkContainsToji(k) {
+        const mm = rkMonthJstMidnights(k);
+        const lonA = rkSunLongitude(mm[0]), lonB = rkSunLongitude(mm[1]);
+        const adv = ((lonB - lonA) % 360 + 360) % 360;
+        const end = lonA + adv;
+        return Math.floor(end / 270) > Math.floor(lonA / 270) || (lonA < 270 && end >= 270);
+    }
+    function rkLunarMonthNumber(y, m, d) {
+        const k = rkFindK(y, m, d).k;
+        let k11 = k;
+        while (!rkContainsToji(k11)) k11--;
+        let k11n = k11 + 1;
+        while (!rkContainsToji(k11n)) k11n++;
+        let leapIdx = -1;
+        if (k11n - k11 === 13) {
+            for (let i = k11 + 1; i < k11n; i++) { if (rkChukiCount(i) === 0) { leapIdx = i; break; } }
+        }
+        const naive = (j) => ((10 + j) % 12) + 1;
+        let num = naive(k - k11);
+        if (leapIdx >= 0) {
+            if (k === leapIdx) num = naive(leapIdx - k11 - 1);
+            else if (k > leapIdx) { num = num - 1; if (num === 0) num = 12; }
+        }
+        return num;
+    }
+    function getRokuyo(y, m, d) {
+        try {
+            const info = rkFindK(y, m, d);
+            const lm = rkLunarMonthNumber(y, m, d);
+            return ROKUYO_NAMES[(lm + info.lunarDay) % 6];
+        } catch (e) { return ''; }
+    }
+    // 'YYYY-MM-DD' → '2026年11月18日（水）・先勝'
+    function formatJapaneseDate(dateStr) {
+        const m = String(dateStr || '').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (!m) return dateStr || '';
+        const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+        const wd = WEEKDAYS_JA[new Date(y, mo - 1, d).getDay()];
+        const rk = getRokuyo(y, mo, d);
+        return y + '年' + mo + '月' + d + '日（' + wd + '）' + (rk ? '・' + rk : '');
+    }
+    // 'YYYY/MM/DD HH:mm' 等 → '2026年11月14日（土） 10:47'
+    function formatJapaneseDateTime(str) {
+        if (!str) return str || '';
+        const m = String(str).match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+        if (!m) return str;
+        const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+        const wd = WEEKDAYS_JA[new Date(y, mo - 1, d).getDay()];
+        let out = y + '年' + mo + '月' + d + '日（' + wd + '）';
+        if (m[4] !== undefined) out += ' ' + String(m[4]).padStart(2, '0') + ':' + m[5];
+        return out;
+    }
+
+    // ===== Ver 1.7 施工記録の絞り込み／カレンダー表示／什器の使用履歴 =====
+    // 画面構成の方針: 新しいタブは増やさず、施工記録タブの中に「リスト⇔カレンダー」切替と絞り込みを置き、
+    // 什器の使用履歴は什器管理の各什器を広げた先に表示する。
+    const v17State = { mode: 'list', month: '', org: 'ALL', keyword: '', selectedDay: '' };
+
+    function v17FilteredRecords() {
+        const kw = v17State.keyword.trim().toLowerCase();
+        return constructionRecords.filter(rec => {
+            if (v17State.month && !String(rec.date || '').startsWith(v17State.month)) return false;
+            if (v17State.org !== 'ALL') {
+                const dm = String(rec.date || '').match(/^(\d{4})-(\d{1,2})/);
+                if (!dm) return false;
+                if (getAssigneeFor(Number(dm[1]), Number(dm[2])).org !== v17State.org) return false;
+            }
+            if (kw) {
+                const eqText = (rec.equipmentIds || []).map(code => {
+                    const f = equipmentData.find(e => e.code === code);
+                    return code + ' ' + (f ? (f.name || '') + ' ' + (f.category || '') : '');
+                }).join(' ');
+                const hay = [rec.code, rec.author, rec.notes, rec.date, eqText].join(' ').toLowerCase();
+                if (!hay.includes(kw)) return false;
+            }
+            return true;
+        });
+    }
+
+    function v17MonthOptions() {
+        const set = new Set();
+        constructionRecords.forEach(r => { if (r.date) set.add(String(r.date).slice(0, 7)); });
+        const now = new Date();
+        set.add(now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'));
+        return Array.from(set).sort().reverse();
+    }
+
+    function v17BuildToolbar() {
+        if (document.getElementById('v17-toolbar')) return;
+        const list = document.getElementById('construction-list');
+        if (!list) return;
+        const bar = document.createElement('div');
+        bar.id = 'v17-toolbar';
+        bar.className = 'space-y-3';
+        bar.innerHTML = `
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="inline-flex rounded-md border border-stone-300 overflow-hidden" role="tablist" aria-label="表示切替">
+                    <button type="button" id="v17-mode-list" onclick="v17SetMode('list')" class="px-3.5 py-2 text-xs font-bold transition"><i class="fa-solid fa-list mr-1"></i>リスト</button>
+                    <button type="button" id="v17-mode-calendar" onclick="v17SetMode('calendar')" class="px-3.5 py-2 text-xs font-bold transition border-l border-stone-300"><i class="fa-regular fa-calendar mr-1"></i>カレンダー</button>
+                </div>
+                <span id="v17-count" class="text-[11px] text-stone-500 font-bold"></span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 bg-white border border-stone-200 rounded-md px-3 py-2.5">
+                <label class="text-[11px] font-bold text-stone-500">月 <select id="v17-filter-month" onchange="v17OnFilterChange()" class="ml-1 border border-stone-300 rounded px-2 py-1.5 text-xs bg-white"></select></label>
+                <label class="text-[11px] font-bold text-stone-500">担当 <select id="v17-filter-org" onchange="v17OnFilterChange()" class="ml-1 border border-stone-300 rounded px-2 py-1.5 text-xs bg-white">
+                    <option value="ALL">すべて</option><option value="YK">ユー花園</option><option value="FI">フローリスト石原</option>
+                </select></label>
+                <label class="text-[11px] font-bold text-stone-500 flex-1 min-w-[140px]">検索 <input id="v17-filter-keyword" type="search" placeholder="管理コード・担当者・メモ・什器名" oninput="v17OnFilterChange()" class="ml-1 w-full sm:w-auto border border-stone-300 rounded px-2 py-1.5 text-xs"></label>
+                <button type="button" onclick="v17ClearFilters()" class="px-2.5 py-1.5 text-[11px] font-bold text-stone-500 hover:text-stone-700 underline">条件をクリア</button>
+            </div>
+            <div id="v17-calendar-wrap" class="hidden space-y-3">
+                <div class="flex items-center justify-between bg-white border border-stone-200 rounded-md px-3 py-2">
+                    <button type="button" onclick="v17MoveMonth(-1)" class="px-3 py-1.5 border border-stone-300 rounded text-xs font-bold bg-white hover:bg-stone-50"><i class="fa-solid fa-chevron-left"></i> 前月</button>
+                    <div id="v17-cal-title" class="text-sm font-bold text-stone-800"></div>
+                    <button type="button" onclick="v17MoveMonth(1)" class="px-3 py-1.5 border border-stone-300 rounded text-xs font-bold bg-white hover:bg-stone-50">次月 <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <div id="v17-calendar" class="bg-white border border-stone-200 rounded-md p-2 sm:p-3"></div>
+                <div id="v17-day-detail"></div>
+            </div>`;
+        list.parentNode.insertBefore(bar, list);
+        v17SyncFilterUi();
+        v17UpdateModeButtons();
+    }
+
+    function v17SyncFilterUi() {
+        const sel = document.getElementById('v17-filter-month');
+        if (sel) {
+            const cur = v17State.month;
+            sel.innerHTML = '<option value="">すべての月</option>' + v17MonthOptions().map(mo => {
+                const y = mo.slice(0, 4), m = String(Number(mo.slice(5, 7)));
+                return `<option value="${mo}">${y}年${m}月</option>`;
+            }).join('');
+            sel.value = cur;
+        }
+        const org = document.getElementById('v17-filter-org');
+        if (org) org.value = v17State.org;
+        const kw = document.getElementById('v17-filter-keyword');
+        if (kw && kw.value !== v17State.keyword) kw.value = v17State.keyword;
+    }
+
+    function v17UpdateModeButtons() {
+        const bl = document.getElementById('v17-mode-list');
+        const bc = document.getElementById('v17-mode-calendar');
+        if (!bl || !bc) return;
+        const on = 'bg-[#293241] text-[#fdfbf7]';
+        const off = 'bg-white text-stone-600 hover:bg-stone-50';
+        bl.className = 'px-3.5 py-2 text-xs font-bold transition ' + (v17State.mode === 'list' ? on : off);
+        bc.className = 'px-3.5 py-2 text-xs font-bold transition border-l border-stone-300 ' + (v17State.mode === 'calendar' ? on : off);
+        const wrap = document.getElementById('v17-calendar-wrap');
+        const list = document.getElementById('construction-list');
+        if (wrap) wrap.classList.toggle('hidden', v17State.mode !== 'calendar');
+        if (list) list.classList.toggle('hidden', v17State.mode === 'calendar');
+    }
+
+    function v17UpdateCount() {
+        const el = document.getElementById('v17-count');
+        if (!el) return;
+        const filtered = v17FilteredRecords().length;
+        el.textContent = '全' + constructionRecords.length + '件中 ' + filtered + '件を表示';
+    }
+
+    function v17SetMode(mode) {
+        v17State.mode = mode;
+        v17UpdateModeButtons();
+        if (mode === 'calendar') v17RenderCalendar();
+    }
+
+    function v17OnFilterChange() {
+        const mo = document.getElementById('v17-filter-month');
+        const og = document.getElementById('v17-filter-org');
+        const kw = document.getElementById('v17-filter-keyword');
+        if (mo) v17State.month = mo.value;
+        if (og) v17State.org = og.value;
+        if (kw) v17State.keyword = kw.value;
+        if (typeof renderConstructionList === 'function') renderConstructionList();
+        if (v17State.mode === 'calendar') v17RenderCalendar();
+        v17UpdateCount();
+    }
+
+    function v17ClearFilters() {
+        v17State.month = ''; v17State.org = 'ALL'; v17State.keyword = ''; v17State.selectedDay = '';
+        v17SyncFilterUi();
+        v17OnFilterChange();
+    }
+
+    function v17MoveMonth(delta) {
+        let base = v17State.month;
+        if (!base) { const n = new Date(); base = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0'); }
+        const y = Number(base.slice(0, 4)), m = Number(base.slice(5, 7)) + delta;
+        const dt = new Date(y, m - 1, 1);
+        v17State.month = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+        v17State.selectedDay = '';
+        v17SyncFilterUi();
+        if (typeof renderConstructionList === 'function') renderConstructionList();
+        v17RenderCalendar();
+        v17UpdateCount();
+    }
+
+    function v17RenderCalendar() {
+        const cal = document.getElementById('v17-calendar');
+        const title = document.getElementById('v17-cal-title');
+        if (!cal) return;
+        let base = v17State.month;
+        if (!base) { const n = new Date(); base = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0'); }
+        const y = Number(base.slice(0, 4)), m = Number(base.slice(5, 7));
+        const a = getAssigneeFor(y, m);
+        if (title) title.innerHTML = y + '年' + m + '月 <span class="ml-1 text-[11px] px-2 py-0.5 rounded border ' + (a.org === 'YK' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-sky-50 border-sky-300 text-sky-800') + '">担当: ' + a.label + '</span>';
+        const filtered = v17FilteredRecords();
+        const byDay = {};
+        filtered.forEach(r => { (byDay[r.date] = byDay[r.date] || []).push(r); });
+        const first = new Date(y, m - 1, 1);
+        const startDow = first.getDay();
+        const daysInMonth = new Date(y, m, 0).getDate();
+        const todayStr = (() => { const t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); })();
+        let cells = '';
+        ['日', '月', '火', '水', '木', '金', '土'].forEach((w, i) => {
+            cells += `<div class="text-center text-[11px] font-bold py-1 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-stone-500'}">${w}</div>`;
+        });
+        for (let i = 0; i < startDow; i++) cells += '<div></div>';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const ds = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            const recs = byDay[ds] || [];
+            const rk = getRokuyo(y, m, d);
+            const dow = new Date(y, m - 1, d).getDay();
+            const isToday = ds === todayStr;
+            const isSel = ds === v17State.selectedDay;
+            cells += `<button type="button" onclick="v17SelectDay('${ds}')" class="relative text-left border rounded-md p-1.5 min-h-[64px] align-top transition ${isSel ? 'border-[#8c672a] ring-1 ring-[#8c672a] bg-amber-50' : 'border-stone-200 bg-white hover:bg-stone-50'} ${isToday ? 'ring-1 ring-stone-400' : ''}">
+                <div class="flex items-baseline justify-between">
+                    <span class="text-xs font-bold ${dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-stone-700'}">${d}</span>
+                    <span class="text-[9px] ${rk === '友引' ? 'text-red-600 font-bold' : 'text-stone-400'}">${rk}</span>
+                </div>
+                ${recs.length ? `<div class="mt-1"><span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${a.org === 'YK' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}">施工 ${recs.length}件</span></div>` : ''}
+            </button>`;
+        }
+        cal.innerHTML = `<div class="grid grid-cols-7 gap-1">${cells}</div>
+            <p class="mt-2 text-[10px] text-stone-400">日付を押すと、その日の施工記録が下に表示されます。六曜つき（友引は赤字）。</p>`;
+        v17RenderDayDetail();
+    }
+
+    function v17SelectDay(ds) {
+        v17State.selectedDay = ds;
+        v17RenderCalendar();
+    }
+
+    function v17RenderDayDetail() {
+        const box = document.getElementById('v17-day-detail');
+        if (!box) return;
+        if (!v17State.selectedDay) { box.innerHTML = ''; return; }
+        const recs = v17FilteredRecords().filter(r => r.date === v17State.selectedDay);
+        if (!recs.length) {
+            box.innerHTML = `<div class="bg-white border border-stone-200 rounded-md p-3 text-xs text-stone-500">${escapeHtml(formatJapaneseDate(v17State.selectedDay))} の施工記録はありません。</div>`;
+            return;
+        }
+        box.innerHTML = `<div class="bg-white border border-stone-200 rounded-md p-3 space-y-2">
+            <div class="text-xs font-bold text-stone-700">${escapeHtml(formatJapaneseDate(v17State.selectedDay))} の施工記録（${recs.length}件）</div>
+            ${recs.map(r => {
+                const eqNames = (r.equipmentIds || []).map(code => { const f = equipmentData.find(e => e.code === code); return f ? f.name : code; }).join('、');
+                return `<div class="border border-stone-200 rounded p-2.5 bg-stone-50/60">
+                    <div class="flex flex-wrap items-center gap-1.5 text-xs">${getOrgBadgeHtml(r.org)}<span class="font-bold text-stone-800">${escapeHtml(r.code || '')}</span><span class="text-stone-500">${escapeHtml(r.author || '')}</span>${getAssigneeBadgeHtml(r.date)}</div>
+                    ${eqNames ? `<div class="mt-1 text-[11px] text-stone-600">使用什器: ${escapeHtml(eqNames)}</div>` : ''}
+                    ${r.notes ? `<div class="mt-1 text-[11px] text-stone-600 whitespace-pre-wrap">${escapeHtml(r.notes)}</div>` : ''}
+                </div>`;
+            }).join('')}
+            <p class="text-[10px] text-stone-400">写真の確認や編集は「リスト」表示に切り替えて、該当の記録から行ってください。</p>
+        </div>`;
+    }
+
+    // 什器の使用履歴: 什器管理で什器を広げると、その什器が使われた施工記録を新しい順に表示する
+    function toggleUsageHistory(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden');
+    }
+    function v17UsageHistoryHtml(code) {
+        const recs = constructionRecords.filter(r => (r.equipmentIds || []).includes(code))
+            .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        const hid = 'usage-' + code.replace(/[^a-zA-Z0-9_-]/g, '_');
+        if (!recs.length) {
+            return `<div class="mt-2 text-[11px] text-stone-400">使用履歴: まだ施工記録で使われていません。</div>`;
+        }
+        const items = recs.map(r => `<div class="flex flex-wrap items-center gap-1.5 py-1 border-b border-stone-100 last:border-0">
+                <span class="font-bold text-stone-700">${escapeHtml(formatJapaneseDate(r.date))}</span>
+                ${getOrgBadgeHtml(r.org)}
+                <span class="text-stone-700">${escapeHtml(r.code || '')}</span>
+                <span class="text-stone-400">${escapeHtml(r.author || '')}</span>
+            </div>`).join('');
+        return `<div class="mt-2">
+            <button type="button" onclick="toggleUsageHistory('${hid}')" class="px-2.5 py-1 bg-white border border-[#8c672a]/50 text-[#7c581e] hover:bg-amber-50 rounded text-[11px] font-bold"><i class="fa-solid fa-clock-rotate-left mr-1"></i>使用履歴を見る（${recs.length}件）</button>
+            <div id="${hid}" class="hidden mt-1.5 bg-white border border-stone-200 rounded px-2.5 py-1 text-[11px]">${items}</div>
+        </div>`;
+    }
+    function v17InjectUsageHistories() {
+        const list = document.getElementById('equipment-tree-list');
+        if (!list) return;
+        const codes = new Set(equipmentData.map(e => e.code));
+        list.querySelectorAll('span.font-mono').forEach(span => {
+            const code = (span.textContent || '').trim();
+            if (!codes.has(code)) return;
+            const host = span.closest('div.bg-white.rounded-md') || span.closest('div.ml-5') || span.parentElement;
+            if (!host || host.querySelector('.v17-usage-slot')) return;
+            const slot = document.createElement('div');
+            slot.className = 'v17-usage-slot';
+            slot.innerHTML = v17UsageHistoryHtml(code);
+            host.appendChild(slot);
+        });
+    }
+
+    // 既存の描画関数を包んで、絞り込みと履歴差し込みを効かせる（元の処理はそのまま使う）
+    (function v17Init() {
+        v17BuildToolbar();
+        if (typeof renderConstructionList === 'function') {
+            const orig = renderConstructionList;
+            renderConstructionList = function () {
+                const real = constructionRecords;
+                constructionRecords = v17FilteredRecords();
+                try { orig(); } finally { constructionRecords = real; }
+                v17UpdateCount();
+                v17SyncFilterUi();
+                if (v17State.mode === 'calendar') v17RenderCalendar();
+            };
+            renderConstructionList();
+        }
+        if (typeof renderEquipmentTreeList === 'function') {
+            const origEq = renderEquipmentTreeList;
+            renderEquipmentTreeList = function () { origEq(); v17InjectUsageHistories(); };
+            renderEquipmentTreeList();
+        }
+        v17UpdateCount();
+    })();
     function getAssigneeFor(y, m) {
         if (y <= 2026) return { org: 'FI', label: 'フローリスト石原' };
         return (m % 2 === 1) ? { org: 'YK', label: 'ユー花園' } : { org: 'FI', label: 'フローリスト石原' };
@@ -4898,10 +5296,6 @@
         const now = new Date();
         const a = getAssigneeFor(now.getFullYear(), now.getMonth() + 1);
         cur.innerHTML = `今月（${now.getFullYear()}年${now.getMonth() + 1}月）の担当: <strong>${a.label}</strong>`;
-        const nm = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-        const na = getAssigneeFor(nm.getFullYear(), nm.getMonth() + 1);
-        const nxt = document.getElementById('assignee-next');
-        if (nxt) nxt.textContent = `来月（${nm.getMonth() + 1}月）: ${na.label}`;
         const tbl = document.getElementById('assignee-year-table');
         if (tbl && !tbl.dataset.done) {
             tbl.dataset.done = '1';
