@@ -579,13 +579,13 @@
                         <input type="date" id="const-date" class="w-full p-2.5 bg-white border border-stone-300 rounded-md text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-stone-700 mb-1">施行管理コード（喪家名は入力しない）</label>
+                        <label class="block text-xs font-bold text-stone-700 mb-1">規格（喪家名は入力しない） <span class="text-red-600">*</span></label>
                         <input type="text" id="const-code" placeholder="例: MH-202611-03" class="w-full p-2.5 bg-white border border-stone-300 rounded-md text-sm">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-stone-700 mb-1">施工内容・花材メモ <span class="text-red-600">*</span></label>
+                    <label class="block text-xs font-bold text-stone-700 mb-1">備考</label>
                     <textarea id="const-notes" rows="2" placeholder="例: 祭壇左右生花スタンド配置、中央に5連シリンダー（LED点灯）を設置" class="w-full p-2.5 bg-white border border-stone-300 rounded-md text-sm"></textarea>
                 </div>
 
@@ -595,13 +595,12 @@
                     <div class="bg-amber-50/70 p-3 rounded-md border border-amber-200 space-y-2">
                         <label class="text-xs sm:text-sm font-bold text-stone-800 flex items-center gap-1.5">
                             <i class="fa-solid fa-book-open text-[#8c672a]"></i>
-                            <span>共同カタログ（祭壇パターン）から選ぶ</span>
+                            <span>規格を選んで什器反映</span>
                         </label>
                         <div class="flex gap-2">
                             <select id="const-catalog-select" class="flex-1 p-2 bg-white border border-stone-300 rounded text-xs sm:text-sm"></select>
-                            <button type="button" onclick="applySelectedCatalogPattern()" class="px-3 py-2 bg-[#8c672a] hover:bg-[#75551f] text-white rounded text-xs font-bold transition whitespace-nowrap">使用什器に反映</button>
+                            <button type="button" onclick="applySelectedCatalogPattern()" class="px-3 py-2 bg-[#8c672a] hover:bg-[#75551f] text-white rounded text-xs font-bold transition whitespace-nowrap">決定</button>
                         </div>
-                        <p class="text-[11px] text-stone-500">パターンを反映すると、下の使用什器のチェックが自動で入ります（あとから個別に外したり追加したりできます）。</p>
                     </div>
                     <div id="const-equipment-selector" class="space-y-2">
                         <!-- JSで階層別に選択ボタンを生成 -->
@@ -620,9 +619,6 @@
                                 <i class="fa-solid fa-upload mr-1 text-[#d6b779]"></i>写真を選択
                                 <input type="file" id="mosaic-image-input" accept="image/*" class="hidden">
                             </label>
-                            <button type="button" onclick="loadSamplePhotoForMosaic()" class="px-3 py-1.5 bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 text-xs font-bold rounded-md transition whitespace-nowrap">
-                                サンプル画像読込
-                            </button>
                         </div>
                     </div>
 
@@ -633,7 +629,11 @@
                     <div class="flex flex-wrap items-center gap-3 bg-white p-2 rounded-md border border-stone-200">
                         <span class="text-xs font-bold text-stone-700 whitespace-nowrap">ブラシ太さ:</span>
                         <input type="range" id="mosaic-brush-size" min="15" max="60" value="30" class="w-24 sm:w-32 accent-[#8c672a]">
-                        <button type="button" onclick="resetMosaicCanvas()" class="ml-auto px-2.5 py-1 text-xs bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md font-bold whitespace-nowrap">
+                        <div class="flex gap-1 ml-auto">
+                            <button type="button" id="mosaic-mode-pen" onclick="v21SetMosaicMode('pen')" class="px-2.5 py-1 text-xs rounded-md font-bold whitespace-nowrap bg-[#8c672a] text-white"><i class="fa-solid fa-pen mr-1"></i>ペン</button>
+                            <button type="button" id="mosaic-mode-move" onclick="v21SetMosaicMode('move')" class="px-2.5 py-1 text-xs rounded-md font-bold whitespace-nowrap bg-stone-100 text-stone-700"><i class="fa-solid fa-up-down-left-right mr-1"></i>移動</button>
+                        </div>
+                        <button type="button" onclick="resetMosaicCanvas()" class="px-2.5 py-1 text-xs bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md font-bold whitespace-nowrap">
                             <i class="fa-solid fa-rotate-left mr-1"></i>モザイクやり直し
                         </button>
                     </div>
@@ -642,8 +642,19 @@
                         <canvas id="mosaic-canvas" class="max-w-full h-auto cursor-crosshair touch-none"></canvas>
                         <div id="canvas-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-stone-500 pointer-events-none p-4 text-center">
                             <i class="fa-regular fa-image text-3xl mb-1"></i>
-                            <span class="text-xs">「写真を選択」または「サンプル画像読込」を押してください</span>
+                            <span class="text-xs">「写真を選択」を押してください</span>
                         </div>
+                    </div>
+
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-xs font-bold text-stone-700">サブ写真（任意・複数可）</span>
+                            <label class="px-2.5 py-1 bg-white hover:bg-stone-50 border border-stone-300 rounded-md text-xs font-bold cursor-pointer">
+                                ＋ サブ写真を追加
+                                <input type="file" id="const-sub-image-input" accept="image/*" multiple class="hidden">
+                            </label>
+                        </div>
+                        <div id="const-sub-thumbs" class="flex flex-wrap gap-1.5 mt-1.5"></div>
                     </div>
                 </div>
             </div>
@@ -1101,6 +1112,18 @@
                 <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 2.0.1（2026/11/14）</div>
+                            <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 2.1.1（2026/11/14）</div>
+                            <p class="mt-0.5">・連携GAS v3（サブ写真・最終投稿日時の共有、画像アップロード対応）へ接続先を切り替え</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 2.1（2026/11/14）</div>
+                            <p class="mt-0.5">・「管理コード」を「規格」に変更し必須項目に／「施工内容・花材メモ」は「備考」に変更し任意項目に<br>・カタログ選択は「規格を選んで什器反映／決定」に変更<br>・施工写真はメイン＋サブ（複数）投稿に対応。カードにサムネイルが並び、タップで切り替え<br>・モザイクにペン／移動モード切替を追加し、初期の粗さを細かく調整<br>・施工記録は施工日順に並べ替え。ID表示をやめ、最終投稿日時を表示（編集で更新）<br>・編集内容が他の端末に届かない場合があったのを修正<br>※サブ写真の共有には連携GAS v3への更新が必要です</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.0（2026/11/14）</div>
                             <p class="mt-0.5">・投稿画像を高画質化（保存サイズを大きくし、花や細部が分かる画質に。モザイクの粗さは従来と同じに調整）<br>・カードの写真をタップすると大きな画像で開くように（ピンチ拡大・ドラッグ移動対応）<br>・モザイク加工中もピンチで拡大縮小できるように</p>
                         </div>
@@ -1200,6 +1223,7 @@
         </button>
         <img id="lightbox-img" src="" alt="拡大写真" onclick="event.stopPropagation()" class="max-w-full max-h-[80vh] rounded-md shadow-2xl object-contain">
         <p id="lightbox-caption" class="text-stone-200 text-xs sm:text-sm mt-3 font-medium tracking-wide text-center"></p>
+        <p class="text-stone-400 text-[11px] mt-1 text-center">ピンチで拡大縮小／指でドラッグ移動／ダブルタップで元に戻る</p>
     </div>
 
     <!-- カスタム確認ダイアログ（confirm()代替） -->
@@ -4038,14 +4062,23 @@
 
         function openImageLightbox(src, caption = "現場写真プレビュー") {
             pushNavState('modal:lightbox');
-            document.getElementById('lightbox-img').src = src;
+            const lbImg = document.getElementById('lightbox-img');
+            // Ver 2.0.1: 全体図・コメント写真の拡大表示にもピンチズームを付ける
+            // （施工記録のカード写真は Ver 2.0 の新ビューア側で対応済み）
+            if (lbImg && typeof v20AttachZoom === 'function') {
+                lbImg.style.touchAction = 'none';
+                if (!lbImg._v20zoom) lbImg._v20zoom = v20AttachZoom(lbImg, { panSingle: true });
+                lbImg._v20zoom.reset();
+            }
+            lbImg.src = src;
             document.getElementById('lightbox-caption').textContent = caption;
             document.getElementById('image-lightbox').classList.remove('hidden');
         }
 
         function closeImageLightbox(isBackAction = false) {
             document.getElementById('image-lightbox').classList.add('hidden');
-            document.getElementById('lightbox-img').src = '';
+            const lbImg = document.getElementById('lightbox-img');
+            if (lbImg) { if (lbImg._v20zoom) lbImg._v20zoom.reset(); lbImg.src = ''; }
             if (!isBackAction && navigationHistory[navigationHistory.length - 1] === 'modal:lightbox') {
                 navigationHistory.pop();
             }
@@ -4142,6 +4175,7 @@
         }
 
         function startMosaic(e) {
+            if (window.__mosaicMode === 'move') return;
             if (window.__pinching) return;
             if (e && e.type && e.type.indexOf('mouse') === 0 && Date.now() - (window.__lastMosaicTouch || 0) < 800) return;
             if (!originalImageObj) return;
@@ -4150,6 +4184,7 @@
         }
 
         function drawMosaic(e) {
+            if (window.__mosaicMode === 'move') return;
             if (window.__pinching) return;
             if (e && e.type && e.type.indexOf('mouse') === 0 && Date.now() - (window.__lastMosaicTouch || 0) < 800) return;
             if (!isDrawingMosaic || !originalImageObj) return;
@@ -4161,8 +4196,8 @@
             const x = (e.clientX - rect.left) * scaleX;
             const y = (e.clientY - rect.top) * scaleY;
 
-            const brushSize = parseInt(document.getElementById('mosaic-brush-size').value, 10) * Math.max(1, mosaicCanvas.width / 500);
-            const blockSize = Math.max(10, Math.round(mosaicCanvas.width / 50));
+            const brushSize = parseInt(document.getElementById('mosaic-brush-size').value, 10) * Math.max(1, mosaicCanvas.width / 1000);
+            const blockSize = Math.max(10, Math.round(mosaicCanvas.width / 80));
 
             const startX = Math.max(0, Math.floor((x - brushSize / 2) / blockSize) * blockSize);
             const startY = Math.max(0, Math.floor((y - brushSize / 2) / blockSize) * blockSize);
@@ -4210,11 +4245,11 @@
 
         function saveConstructionRecord() {
             const date = document.getElementById('const-date').value;
-            const code = document.getElementById('const-code').value.trim() || "コード未設定";
+            const code = document.getElementById('const-code').value.trim();
             const notes = document.getElementById('const-notes').value.trim();
 
-            if (!date || !notes) {
-                showToast("施工日と施工内容を入力してください", "error");
+            if (!date || !code) {
+                showToast("施工日と規格を入力してください", "error");
                 return;
             }
 
@@ -4271,7 +4306,7 @@
 
                 const adminBar = isAdmin ? `
                     <div class="pt-2 mt-1 border-t border-stone-200 flex flex-wrap items-center justify-between gap-1.5 text-[10px]">
-                        <span class="font-mono text-stone-400">ID: ${escapeHtml(rec.userId || '')}</span>
+                        <span class="text-stone-400">最終投稿: ${v21PostedLabel(rec)}</span>
                         <div class="flex items-center gap-1.5">
                             <button type="button" onclick="toggleConstructionLock('${escapeHtml(rec.id)}')" class="px-2 py-0.5 rounded border font-bold ${rec.locked ? 'bg-red-50 text-red-700 border-red-300' : 'bg-stone-100 text-stone-600 border-stone-300'}">
                                 <i class="fa-solid ${rec.locked ? 'fa-lock' : 'fa-lock-open'} mr-0.5"></i>${rec.locked ? 'ロック中' : 'ロック'}
@@ -4286,10 +4321,11 @@
                 return `
                     <div class="bg-white rounded-md border ${rec.locked ? 'border-amber-400' : 'border-stone-200'} shadow-2xs overflow-hidden flex flex-col sm:flex-row">
                         <div class="sm:w-2/5 h-44 sm:h-auto bg-stone-100 flex-none">
-                            <img src="${rec.image}" alt="施工記録" onclick="openImageViewer('${escapeHtml(rec.id)}')" class="w-full h-full object-cover cursor-pointer">
+                            <img src="${rec.image}" alt="施工記録" onclick="openImageViewer('${escapeHtml(rec.id)}', this.src)" class="w-full h-full object-cover cursor-pointer">
                         </div>
                         <div class="p-4 flex-1 flex flex-col justify-between space-y-2">
                             <div>
+                                ${v21ThumbStripHtml(rec)}
                                 <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-stone-500 mb-1.5">
                                     <div class="flex flex-wrap items-center gap-1.5">
                                         <span class="font-bold text-stone-700 whitespace-nowrap">${escapeHtml(formatJapaneseDate(rec.date))}</span>
@@ -4924,7 +4960,7 @@
     <script>
     // ===== Ver 1.6 追加モジュール（担当月表示／共同カタログ／バックアップ／パスワードハッシュ化） =====
     // 共同カタログ専用GAS（カタログ同期先）
-    const CATALOG_GAS_URL = 'https://script.google.com/macros/s/AKfycbzuspSI85lXfcuzDcJh2s3-1IDBYSrFwZOL5oA5dZgb01Hjwndoon5L4Jugl9-hPKkN/exec';
+    const CATALOG_GAS_URL = 'https://script.google.com/macros/s/AKfycbzjcXjLxnpIUcKYvuJNiI7INupHECxplBhNgfb56UoFKicY8eo9EGamG0u_B4v41sFN/exec';
     async function postCatalogToGas(payloadObj) {
         if (!CATALOG_GAS_URL) {
             try { return await postActionToGas(payloadObj); } catch (e) { return null; }
@@ -5096,7 +5132,7 @@
 
     function v17FilteredRecords() {
         const kw = v17State.keyword.trim().toLowerCase();
-        return constructionRecords.filter(rec => {
+        const filtered = constructionRecords.filter(rec => {
             if (v17State.month && !normalizeDateStr(rec.date).startsWith(v17State.month)) return false;
             if (v17State.org !== 'ALL') {
                 const dp = parseDateParts(rec.date);
@@ -5113,6 +5149,13 @@
             }
             return true;
         });
+        filtered.sort((a, b) => {
+            const da = normalizeDateStr(a.date) || '';
+            const db = normalizeDateStr(b.date) || '';
+            if (da !== db) return db.localeCompare(da);
+            return String(b.id).localeCompare(String(a.id));
+        });
+        return filtered;
     }
 
     function v17MonthOptions() {
@@ -5143,7 +5186,7 @@
                 <label class="text-[11px] font-bold text-stone-500">担当 <select id="v17-filter-org" onchange="v17OnFilterChange()" class="ml-1 border border-stone-300 rounded px-2 py-1.5 text-xs bg-white">
                     <option value="ALL">すべて</option><option value="YK">ユー花園</option><option value="FI">フローリスト石原</option>
                 </select></label>
-                <label class="text-[11px] font-bold text-stone-500 flex-1 min-w-[140px]">検索 <input id="v17-filter-keyword" type="search" placeholder="管理コード・担当者・メモ・什器名" oninput="v17OnFilterChange()" class="ml-1 w-full sm:w-auto border border-stone-300 rounded px-2 py-1.5 text-xs"></label>
+                <label class="text-[11px] font-bold text-stone-500 flex-1 min-w-[140px]">検索 <input id="v17-filter-keyword" type="search" placeholder="規格・担当者・備考・什器名" oninput="v17OnFilterChange()" class="ml-1 w-full sm:w-auto border border-stone-300 rounded px-2 py-1.5 text-xs"></label>
                 <button type="button" onclick="v17ClearFilters()" class="px-2.5 py-1.5 text-[11px] font-bold text-stone-500 hover:text-stone-700 underline">条件をクリア</button>
             </div>
             <div id="v17-calendar-wrap" class="hidden space-y-3">
@@ -5622,13 +5665,15 @@
             const rec = constructionRecords.find(r => r.id === v18EditingConstructionId);
             if (!rec) { v18EditingConstructionId = null; return origSaveConstruction.apply(this, arguments); }
             const date = document.getElementById('const-date').value;
-            const code = document.getElementById('const-code').value.trim() || 'コード未設定';
+            const code = document.getElementById('const-code').value.trim();
             const notes = document.getElementById('const-notes').value.trim();
-            if (!date || !notes) { showToast('施工日と施工内容を入力してください', 'error'); return; }
+            if (!date || !code) { showToast('施工日と規格を入力してください', 'error'); return; }
             const selectedEq = Array.from(document.querySelectorAll('input[name="used-eq"]:checked')).map(cb => cb.value);
             rec.date = date; rec.code = code; rec.notes = notes; rec.equipmentIds = selectedEq;
             if (originalImageObj) { try { rec.image = mosaicCanvas.toDataURL('image/jpeg', 0.87); } catch (e) {} }
-            try { syncUpdateConstructionToCloud(rec); } catch (e) {}
+            rec.updatedAt = new Date().toISOString();
+            v21ProcessSubsAndMeta(rec);
+            v21SyncEditedConstruction(rec);
             try { markUnsaved(); } catch (e) {}
             try { persistLocalAppData(); } catch (e) {}
             v18EditingConstructionId = null;
@@ -5765,7 +5810,7 @@
                 state.ty = m.y - layoutTop - py * s;
                 apply();
                 e.preventDefault();
-            } else if (e.touches.length === 1 && opts.panSingle && state.scale > 1 && lastSingle) {
+            } else if (e.touches.length === 1 && lastSingle && ((opts.panSingle && state.scale > 1) || (opts.panWhen && opts.panWhen()))) {
                 state.tx += e.touches[0].clientX - lastSingle.x;
                 state.ty += e.touches[0].clientY - lastSingle.y;
                 lastSingle = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -5793,7 +5838,7 @@
         }, { passive: false });
         return { reset, state };
     }
-    function openImageViewer(recId) {
+    function openImageViewer(recId, srcOverride) {
         const rec = constructionRecords.find(r => r.id === recId);
         if (!rec || !rec.image) return;
         closeImageViewer();
@@ -5805,7 +5850,7 @@
             + '<button type="button" id="v20-lightbox-close" class="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 rounded text-sm font-bold whitespace-nowrap">閉じる</button>'
             + '</div>'
             + '<div class="flex-1 overflow-hidden flex items-center justify-center p-2" id="v20-lightbox-stage">'
-            + '<img src="' + escapeHtml(v20LargeImageUrl(rec.image)) + '" alt="施工写真（拡大）" class="max-w-full max-h-full object-contain select-none" style="touch-action:none;" draggable="false">'
+            + '<img src="' + escapeHtml(v20LargeImageUrl(srcOverride || rec.image)) + '" alt="施工写真（拡大）" class="max-w-full max-h-full object-contain select-none" style="touch-action:none;" draggable="false">'
             + '</div>'
             + '<p class="text-center text-[11px] text-stone-400 pb-3">ピンチで拡大縮小／指でドラッグ移動／ダブルタップで元に戻る</p>';
         document.body.appendChild(ov);
@@ -5817,9 +5862,205 @@
         const ov = document.getElementById('v20-lightbox');
         if (ov) ov.remove();
     }
+
+    // ===== Ver 2.1 規格/備考・複数写真・最終投稿日・モザイクモード =====
+    window.V21 = window.V21 || { meta: {}, pendingSubs: [] };
+    try { window.V21.meta = JSON.parse(localStorage.getItem('mizuhodai_record_meta_v1') || '{}'); } catch (e) { window.V21.meta = {}; }
+    window.__mosaicMode = 'pen';
+
+    function v21ApplyMeta() {
+        if (!Array.isArray(constructionRecords)) return;
+        constructionRecords.forEach(rec => {
+            const m = window.V21.meta[rec.id];
+            if (!m) return;
+            if (Array.isArray(m.subImages) && m.subImages.length) rec.subImages = m.subImages;
+            if (m.updatedAt) rec.updatedAt = m.updatedAt;
+        });
+    }
+    function v21SaveMeta(rec) {
+        if (!rec || !rec.id) return;
+        window.V21.meta[rec.id] = { subImages: rec.subImages || [], updatedAt: rec.updatedAt || '' };
+        try { localStorage.setItem('mizuhodai_record_meta_v1', JSON.stringify(window.V21.meta)); } catch (e) {}
+        try { postCatalogToGas({ action: 'setRecordMeta', recordId: rec.id, subImages: rec.subImages || [], updatedAt: rec.updatedAt || '' }); } catch (e) {}
+    }
+    function v21PostedLabel(rec) {
+        if (rec.updatedAt) {
+            const d = new Date(rec.updatedAt);
+            if (!isNaN(d.getTime())) {
+                return formatJapaneseDate(rec.updatedAt.slice(0, 10)) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            }
+        }
+        return formatJapaneseDate(rec.date);
+    }
+    function v21ThumbStripHtml(rec) {
+        const subsOnly = (rec.subImages || []).filter(u => u);
+        if (!subsOnly.length) return '';
+        const hasMain = rec.image && String(rec.image).indexOf('placehold.co') < 0;
+        const urls = (hasMain ? [rec.image] : []).concat(subsOnly);
+        const thumbs = urls.map((u, i) => '<img src="' + escapeHtml(u) + '" data-full="' + escapeHtml(u) + '" onclick="v21SwapCardImage(this)" alt="写真' + (i + 1) + '" class="v21-thumb w-11 h-11 object-cover rounded cursor-pointer border-2 ' + (i === 0 ? 'border-[#8c672a]' : 'border-transparent') + '">').join('');
+        return '<div class="flex flex-wrap gap-1.5 mb-1.5">' + thumbs + '</div>';
+    }
+    function v21CardImageUrl(u) {
+        if (!u) return u;
+        if (u.indexOf('drive.google.com/thumbnail') >= 0) {
+            if (/[?&]sz=/.test(u)) return u.replace(/([?&])sz=[^&]*/, '$1sz=w800');
+            return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'sz=w800';
+        }
+        if (u.indexOf('lh3.googleusercontent.com/d/') >= 0 && !/=w\d+/.test(u)) return u + '=w800';
+        return u;
+    }
+    function v21SwapCardImage(thumbEl) {
+        let card = thumbEl;
+        for (let i = 0; i < 8 && card; i++) {
+            if (card.querySelector && card.querySelector('img[alt="施工記録"]') && card.querySelectorAll('.v21-thumb').length >= 2) break;
+            card = card.parentElement;
+        }
+        if (!card) return;
+        const main = card.querySelector('img[alt="施工記録"]');
+        if (main) main.src = v21CardImageUrl(thumbEl.getAttribute('data-full') || thumbEl.src);
+        card.querySelectorAll('.v21-thumb').forEach(t => {
+            t.classList.remove('border-[#8c672a]');
+            t.classList.add('border-transparent');
+        });
+        thumbEl.classList.remove('border-transparent');
+        thumbEl.classList.add('border-[#8c672a]');
+    }
+    function v21SetMosaicMode(mode) {
+        window.__mosaicMode = mode === 'move' ? 'move' : 'pen';
+        const pen = document.getElementById('mosaic-mode-pen');
+        const move = document.getElementById('mosaic-mode-move');
+        const on = ['bg-[#8c672a]', 'text-white'];
+        const off = ['bg-stone-100', 'text-stone-700'];
+        [[pen, window.__mosaicMode === 'pen'], [move, window.__mosaicMode === 'move']].forEach(([btn, active]) => {
+            if (!btn) return;
+            btn.classList.remove(...on, ...off);
+            btn.classList.add(...(active ? on : off));
+        });
+        const mc = document.getElementById('mosaic-canvas');
+        if (mc) mc.style.cursor = window.__mosaicMode === 'move' ? 'grab' : 'crosshair';
+    }
+    function v21RenderSubThumbs() {
+        const box = document.getElementById('const-sub-thumbs');
+        if (!box) return;
+        box.innerHTML = window.V21.pendingSubs.map((s, i) =>
+            '<span class="relative inline-block"><img src="' + s.src + '" class="w-14 h-14 object-cover rounded border border-stone-300" alt="サブ写真">'
+            + '<button type="button" onclick="v21RemoveSub(' + i + ')" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-stone-800 text-white rounded-full text-[10px] leading-none">×</button></span>'
+        ).join('');
+    }
+    function v21RemoveSub(i) {
+        window.V21.pendingSubs.splice(i, 1);
+        v21RenderSubThumbs();
+    }
+    async function v21ProcessSubsAndMeta(rec) {
+        const subs = [];
+        for (const s of window.V21.pendingSubs) {
+            if (!s || !s.src) continue;
+            if (s.src.indexOf('data:') === 0) {
+                let url = '';
+                try {
+                    const res = await postCatalogToGas({ action: 'uploadImage', dataUrl: s.src });
+                    if (res && res.url) url = res.url;
+                } catch (e) {}
+                subs.push(url || s.src);
+            } else {
+                subs.push(s.src);
+            }
+        }
+        window.V21.pendingSubs = [];
+        v21RenderSubThumbs();
+        rec.subImages = subs;
+        v21SaveMeta(rec);
+        try { renderConstructionList(); } catch (e) {}
+    }
+    async function v21SyncEditedConstruction(rec) {
+        try {
+            const payload = { id: rec.id, userId: rec.userId, author: rec.author, org: rec.org, locked: rec.locked ? 1 : 0, date: normalizeDateStr(rec.date), code: rec.code, notes: rec.notes, equipmentIds: rec.equipmentIds || [], image: rec.image };
+            await postActionToGas({ action: 'deleteConstruction', recordId: rec.id });
+            const res = await postActionToGas({ action: 'addConstruction', record: payload });
+            if (res && res.imageUrl) { rec.image = res.imageUrl; persistLocalAppData(); }
+        } catch (e) {}
+        try { renderConstructionList(); } catch (e) {}
+    }
+    (function initV21() {
+        const subInput = document.getElementById('const-sub-image-input');
+        if (subInput) {
+            subInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files || []);
+                e.target.value = '';
+                for (const f of files) {
+                    if (window.V21.pendingSubs.length >= 6) { showToast('サブ写真は最大6枚までです', 'error'); break; }
+                    try {
+                        const dataUrl = await compressImageFileToDataUrl(f, 1600, 0.85);
+                        window.V21.pendingSubs.push({ src: dataUrl });
+                    } catch (err) {}
+                }
+                v21RenderSubThumbs();
+            });
+        }
+    })();
+    if (typeof openNewConstructionModal === 'function') {
+        const origOpenNew = openNewConstructionModal;
+        openNewConstructionModal = function () {
+            window.V21.pendingSubs = [];
+            v21RenderSubThumbs();
+            v21SetMosaicMode('pen');
+            if (window.__mosaicZoom) window.__mosaicZoom.reset();
+            return origOpenNew.apply(this, arguments);
+        };
+    }
+    if (typeof openConstructionEdit === 'function') {
+        const origOpenEdit = openConstructionEdit;
+        openConstructionEdit = function (recId) {
+            const r = origOpenEdit.apply(this, arguments);
+            const rec = constructionRecords.find(x => x.id === recId);
+            if (rec) {
+                window.V21.pendingSubs = (rec.subImages || []).map(u => ({ src: u }));
+                v21RenderSubThumbs();
+            }
+            return r;
+        };
+    }
+    if (typeof saveConstructionRecord === 'function') {
+        const origSaveV21 = saveConstructionRecord;
+        saveConstructionRecord = function () {
+            const beforeIds = new Set(constructionRecords.map(r => r.id));
+            const hadSubs = window.V21.pendingSubs.length > 0;
+            const r = origSaveV21.apply(this, arguments);
+            if (!v18EditingConstructionId) {
+                const created = constructionRecords.find(x => !beforeIds.has(x.id));
+                if (created) {
+                    created.updatedAt = new Date().toISOString();
+                    if (hadSubs) v21ProcessSubsAndMeta(created); else v21SaveMeta(created);
+                    try { persistLocalAppData(); } catch (e) {}
+                }
+            }
+            return r;
+        };
+    }
+    if (typeof fetchUsersFromDriveSheet === 'function') {
+        const origFetchV21 = fetchUsersFromDriveSheet;
+        fetchUsersFromDriveSheet = async function () {
+            const r = await origFetchV21.apply(this, arguments);
+            try { v21ApplyMeta(); } catch (e) {}
+            return r;
+        };
+    }
+    if (typeof deleteConstructionRecord === 'function') {
+        const origDeleteV21 = deleteConstructionRecord;
+        deleteConstructionRecord = function () {
+            const recId = arguments[0];
+            const r = origDeleteV21.apply(this, arguments);
+            if (recId && !constructionRecords.find(x => x.id === recId)) {
+                delete window.V21.meta[recId];
+                try { localStorage.setItem('mizuhodai_record_meta_v1', JSON.stringify(window.V21.meta)); } catch (e) {}
+                try { postCatalogToGas({ action: 'deleteRecordMeta', recordId: recId }); } catch (e) {}
+            }
+            return r;
+        };
+    }
     (function initV20() {
         const mc = document.getElementById('mosaic-canvas');
-        if (mc) v20AttachZoom(mc);
+        if (mc) window.__mosaicZoom = v20AttachZoom(mc, { panWhen: () => window.__mosaicMode === 'move' });
     })();
     function getAssigneeFor(y, m) {
         if (y <= 2026) return { org: 'FI', label: 'フローリスト石原' };
@@ -6050,6 +6291,13 @@
             }
             if (data && Array.isArray(data.editLocks) && window.V18) {
                 window.V18.claims = data.editLocks;
+            }
+            if (data && data.recordMeta && typeof data.recordMeta === 'object' && window.V21) {
+                try {
+                    Object.keys(data.recordMeta).forEach(k => { window.V21.meta[k] = data.recordMeta[k]; });
+                    localStorage.setItem('mizuhodai_record_meta_v1', JSON.stringify(window.V21.meta));
+                    v21ApplyMeta();
+                } catch (e) {}
             }
         } catch (e) {}
     }
