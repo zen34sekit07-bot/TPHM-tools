@@ -1170,6 +1170,26 @@
         let deletedAreaIds = loadJsonArrayStorage('mizuhodai_deleted_area_ids');
         let deletedCommentIds = loadJsonArrayStorage('mizuhodai_deleted_comment_ids');
         let deletedConstructionIds = loadJsonArrayStorage('mizuhodai_deleted_construction_ids');
+        let activeCloudUploads = 0;
+        let lastCloudMutationTime = 0;
+
+        function getSafeDriveImageUrl(url) {
+            if (!url) return '';
+            const s = String(url);
+            // 以前の文字化けサンプル画像URL(?????)は除外
+            if (s.includes('placehold.co')) return '';
+            return s;
+        }
+
+        function handleDriveImgError(imgEl) {
+            if (!imgEl || imgEl.dataset.fallbackTried === '1') return;
+            const src = imgEl.src || '';
+            const m = src.match(/[?&]id=([^&]+)/);
+            if (m && m[1]) {
+                imgEl.dataset.fallbackTried = '1';
+                imgEl.src = `https://lh3.googleusercontent.com/d/${m[1]}`;
+            }
+        }
 
         function loadJsonArrayStorage(key) {
             try {
@@ -1212,6 +1232,8 @@
         // GASへデータ送信（CORS対応・レスポンス取得可能ならDrive URL等も即時反映）
         async function postActionToGas(payloadObj) {
             if (!gasWebhookUrl || !navigator.onLine) return null;
+            activeCloudUploads++;
+            lastCloudMutationTime = Date.now();
             try {
                 const res = await fetch(gasWebhookUrl, {
                     method: 'POST',
@@ -1241,17 +1263,23 @@
                         })
                     });
                 } catch (e2) {}
+            } finally {
+                activeCloudUploads = Math.max(0, activeCloudUploads - 1);
+                lastCloudMutationTime = Date.now();
+                if (activeCloudUploads === 0) {
+                    hasUnsavedChanges = false;
+                }
             }
             return null;
         }
 
-        function syncAreaToCloud(areaId) {
+        async function syncAreaToCloud(areaId) {
             const area = areaData[areaId];
-            if (!area) return;
+            if (!area) return null;
             deletedAreaIds = deletedAreaIds.filter(id => id !== areaId);
             saveJsonArrayStorage('mizuhodai_deleted_area_ids', deletedAreaIds);
             persistAreaData();
-            postActionToGas({
+            const res = await postActionToGas({
                 action: 'upsertArea',
                 areaId,
                 area: {
@@ -1266,12 +1294,16 @@
                     details: area.details || {},
                     images: area.images || []
                 }
-            }).then(res => {
-                if (res && Array.isArray(res.images) && areaData[areaId]) {
-                    areaData[areaId].images = res.images;
-                    persistAreaData();
-                }
             });
+            if (res && Array.isArray(res.images) && areaData[areaId]) {
+                const cleaned = res.images.map(getSafeDriveImageUrl).filter(Boolean);
+                areaData[areaId].images = cleaned;
+                persistAreaData();
+                if (currentSelectedAreaId === areaId && !document.getElementById('area-modal').classList.contains('hidden')) {
+                    renderAreaPhotoAlbum(areaData[areaId]);
+                }
+            }
+            return res;
         }
 
         function syncDeleteAreaToCloud(areaId) {
@@ -1892,6 +1924,9 @@
         // スプレッドシート（accountシート）から最新アカウント・管理者権限（0/1）を読み込み
         async function fetchUsersFromDriveSheet(silent = false) {
             if (!gasWebhookUrl || !navigator.onLine) return;
+            if (silent && (activeCloudUploads > 0 || (Date.now() - lastCloudMutationTime) < 12000)) {
+                return;
+            }
             try {
                 const res = await fetch(gasWebhookUrl);
                 if (!res.ok) return;
@@ -1961,6 +1996,16 @@
                             const aId = String(rArea.id || '');
                             if (!aId || deletedAreaIds.includes(aId)) return;
                             const existingComments = (areaData[aId] && Array.isArray(areaData[aId].comments)) ? areaData[aId].comments : [];
+                            const remoteImgs = Array.isArray(rArea.images) ? rArea.images.map(getSafeDriveImageUrl).filter(Boolean) : [];
+                            const localPendingImgs = (areaData[aId] && Array.isArray(areaData[aId].images))
+                                ? areaData[aId].images.filter(img => String(img).startsWith('data:image'))
+                                : [];
+                            const mergedImgs = [...remoteImgs];
+                            localPendingImgs.forEach(pImg => {
+                                if (mergedImgs.length < 9 && !mergedImgs.includes(pImg)) {
+                                    mergedImgs.push(pImg);
+                                }
+                            });
                             areaData[aId] = {
                                 title: String(rArea.title || ''),
                                 color: String(rArea.color || '#dc2626'),
@@ -1970,7 +2015,7 @@
                                 pinSize: Number(rArea.pinSize || 40),
                                 locked: Number(rArea.locked || 0) === 1,
                                 details: rArea.details || { basic: '', caution: '', dimensions: '', other: '' },
-                                images: Array.isArray(rArea.images) ? rArea.images : [],
+                                images: mergedImgs,
                                 comments: existingComments
                             };
                         });
@@ -2494,9 +2539,9 @@
                     other: "音響・照明操作卓はホール後方側にあります。式場担当者への確認後に照明調整を行ってください。"
                 },
                 images: [
-                    "https://placehold.co/400x400/e7e5e4/44403c?text=祭壇正面",
-                    "https://placehold.co/400x400/e2e8f0/334155?text=式場全景",
-                    "https://placehold.co/400x400/f5f5f4/57534e?text=搬入扉間口"
+                    
+                    
+                    
                 ],
                 comments: [
                     {
@@ -2538,7 +2583,7 @@
                     other: "式場・会食室およびサロンへの分岐点となるため、台車通過時は参列者の動線を優先してください。"
                 },
                 images: [
-                    "https://placehold.co/400x400/ecfdf5/065f46?text=エントランス全体"
+                    
                 ],
                 comments: [
                     {
@@ -2568,7 +2613,7 @@
                     other: "隣接する法要室やご安置室への廊下通路幅を常に確保してください。"
                 },
                 images: [
-                    "https://placehold.co/400x400/fffbeb/92400e?text=サロン内観"
+                    
                 ],
                 comments: []
             },
@@ -2604,7 +2649,7 @@
                     other: "夜間・早朝の搬入時はエンジン停止および台車走行音の配慮をお願いします。"
                 },
                 images: [
-                    "https://placehold.co/400x400/f5f5f4/44403c?text=駐車場・搬入動線"
+                    
                 ],
                 comments: [
                     {
@@ -2629,6 +2674,11 @@
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                        Object.keys(parsed).forEach(k => {
+                            if (Array.isArray(parsed[k].images)) {
+                                parsed[k].images = parsed[k].images.map(getSafeDriveImageUrl).filter(Boolean);
+                            }
+                        });
                         return parsed;
                     }
                 }
@@ -3331,7 +3381,9 @@
             if (!area) return;
 
             pushNavState(`modal:area:${areaId}`);
-            autoSyncAll();
+            if (activeCloudUploads === 0 && (Date.now() - lastCloudMutationTime) >= 12000) {
+                autoSyncAll();
+            }
             pendingCommentPhotos = [];
             isAreaDetailsEditing = false;
             updateCommentAttachedBadge();
@@ -3394,15 +3446,16 @@
             const countEl = document.getElementById('modal-photo-count');
             if (!container) return;
 
-            const photos = area.images || [];
-            if (countEl) countEl.textContent = `${photos.length} / 9枚`;
+            const photos = (area.images || []).map(getSafeDriveImageUrl).filter(Boolean);
+            area.images = photos;
+            if (countEl) countEl.textContent = `${photos.length} / 9枚（複数選択可）`;
 
             let slotsHtml = '';
             for (let i = 0; i < 9; i++) {
                 if (photos[i]) {
                     slotsHtml += `
                         <div class="relative aspect-square rounded-md overflow-hidden border border-stone-300 bg-stone-100 group">
-                            <img src="${photos[i]}" onclick="openImageLightbox('${photos[i]}', '${escapeHtml(area.title)} - 写真${i + 1}')" alt="現場写真${i + 1}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition">
+                            <img src="${photos[i]}" onerror="handleDriveImgError(this)" onclick="openImageLightbox(this.src, '${escapeHtml(area.title)} - 写真${i + 1}')" alt="現場写真${i + 1}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition">
                             ${isCurrentUserAdmin() ? `
                                 <button type="button" onclick="deleteAreaPhoto(${i})" class="absolute top-1 right-1 w-6 h-6 bg-red-700/90 hover:bg-red-800 text-white rounded-full text-[10px] flex items-center justify-center shadow" title="写真を削除（管理者）">
                                     <i class="fa-solid fa-trash"></i>
@@ -3415,7 +3468,7 @@
                         <label class="aspect-square rounded-md border border-dashed border-stone-300 bg-white hover:bg-amber-50/60 flex flex-col items-center justify-center text-stone-400 hover:text-[#8c672a] cursor-pointer transition">
                             <i class="fa-solid fa-camera text-sm mb-1"></i>
                             <span class="text-[10px] font-bold">追加</span>
-                            <input type="file" accept="image/*" class="hidden" onchange="addAreaPhoto(event)">
+                            <input type="file" accept="image/*" multiple class="hidden" onchange="addAreaPhoto(event)">
                         </label>
                     `;
                 }
@@ -3427,18 +3480,34 @@
             if (!currentSelectedAreaId) return;
             const areaId = currentSelectedAreaId;
             const area = areaData[areaId];
-            if (!area || area.images.length >= 9) return;
-            const file = event.target.files[0];
-            if (!file) return;
-            event.target.value = '';
+            if (!area) return;
 
-            showToast("写真を最適化してGoogleドライブへ保存中...", "info");
-            const compressedDataUrl = await compressImageFileToDataUrl(file, 1024, 0.78);
-            area.images.push(compressedDataUrl);
-            markUnsaved();
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+            if (files.length === 0) return;
+
+            const remainingSlots = 9 - area.images.length;
+            if (remainingSlots <= 0) {
+                showToast("写真は最大9枚まで登録できます", "error");
+                return;
+            }
+
+            const targetFiles = files.slice(0, remainingSlots);
+            if (files.length > remainingSlots) {
+                showToast(`空き枠が${remainingSlots}枚のため、最初の${remainingSlots}枚を追加します`, "info");
+            } else {
+                showToast(`${targetFiles.length}枚の写真を最適化してGoogleドライブへ保存中...`, "info");
+            }
+
+            for (const file of targetFiles) {
+                const compressedDataUrl = await compressImageFileToDataUrl(file, 1024, 0.78);
+                area.images.push(compressedDataUrl);
+            }
+
+            persistAreaData();
             renderAreaPhotoAlbum(area);
-            syncAreaToCloud(areaId);
-            showToast("現場写真を追加・共有しました", "success");
+            await syncAreaToCloud(areaId);
+            showToast(`${targetFiles.length}枚の現場写真を追加・共有しました`, "success");
         }
 
         function deleteAreaPhoto(index) {
