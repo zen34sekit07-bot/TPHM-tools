@@ -1099,6 +1099,10 @@
                 <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.7.1（2026/11/14）</div>
+                            <p class="mt-0.5">・カレンダーの見た目を調整: 担当表示を年月と分けて1行バーに／日付と六曜を2段に分けて折り返さないように</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.7（2026/11/14）</div>
                             <p class="mt-0.5">・施工記録に「リスト／カレンダー」切替と絞り込み（月・担当・キーワード）を追加（タブは増やさず施工記録内へ）<br>・カレンダーは六曜・担当・件数つき。日付を押すとその日の記録が下に出ます<br>・什器管理で什器を広げると「使用履歴」が見られるように</p>
                         </div>
@@ -5059,10 +5063,13 @@
                 <button type="button" onclick="v17ClearFilters()" class="px-2.5 py-1.5 text-[11px] font-bold text-stone-500 hover:text-stone-700 underline">条件をクリア</button>
             </div>
             <div id="v17-calendar-wrap" class="hidden space-y-3">
-                <div class="flex items-center justify-between bg-white border border-stone-200 rounded-md px-3 py-2">
-                    <button type="button" onclick="v17MoveMonth(-1)" class="px-3 py-1.5 border border-stone-300 rounded text-xs font-bold bg-white hover:bg-stone-50"><i class="fa-solid fa-chevron-left"></i> 前月</button>
-                    <div id="v17-cal-title" class="text-sm font-bold text-stone-800"></div>
-                    <button type="button" onclick="v17MoveMonth(1)" class="px-3 py-1.5 border border-stone-300 rounded text-xs font-bold bg-white hover:bg-stone-50">次月 <i class="fa-solid fa-chevron-right"></i></button>
+                <div class="bg-white border border-stone-200 rounded-md px-3 py-2.5 space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <button type="button" onclick="v17MoveMonth(-1)" class="px-3 py-1.5 border border-stone-300 rounded text-xs font-bold bg-white hover:bg-stone-50 whitespace-nowrap"><i class="fa-solid fa-chevron-left"></i> 前月</button>
+                        <div id="v17-cal-title" class="text-base font-bold text-stone-800 whitespace-nowrap"></div>
+                        <button type="button" onclick="v17MoveMonth(1)" class="px-3 py-1.5 border border-stone-300 rounded text-xs font-bold bg-white hover:bg-stone-50 whitespace-nowrap">次月 <i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div id="v17-cal-assignee"></div>
                 </div>
                 <div id="v17-calendar" class="bg-white border border-stone-200 rounded-md p-2 sm:p-3"></div>
                 <div id="v17-day-detail"></div>
@@ -5154,7 +5161,9 @@
         if (!base) { const n = new Date(); base = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0'); }
         const y = Number(base.slice(0, 4)), m = Number(base.slice(5, 7));
         const a = getAssigneeFor(y, m);
-        if (title) title.innerHTML = y + '年' + m + '月 <span class="ml-1 text-[11px] px-2 py-0.5 rounded border ' + (a.org === 'YK' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-sky-50 border-sky-300 text-sky-800') + '">担当: ' + a.label + '</span>';
+        if (title) title.textContent = y + '年' + m + '月';
+        const asg = document.getElementById('v17-cal-assignee');
+        if (asg) asg.innerHTML = '<div class="text-center text-xs font-bold rounded py-1.5 ' + (a.org === 'YK' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-sky-50 text-sky-800 border border-sky-200') + '">この月の担当: ' + a.label + '</div>';
         const filtered = v17FilteredRecords();
         const byDay = {};
         filtered.forEach(r => { (byDay[r.date] = byDay[r.date] || []).push(r); });
@@ -5174,12 +5183,10 @@
             const dow = new Date(y, m - 1, d).getDay();
             const isToday = ds === todayStr;
             const isSel = ds === v17State.selectedDay;
-            cells += `<button type="button" onclick="v17SelectDay('${ds}')" class="relative text-left border rounded-md p-1.5 min-h-[64px] align-top transition ${isSel ? 'border-[#8c672a] ring-1 ring-[#8c672a] bg-amber-50' : 'border-stone-200 bg-white hover:bg-stone-50'} ${isToday ? 'ring-1 ring-stone-400' : ''}">
-                <div class="flex items-baseline justify-between">
-                    <span class="text-xs font-bold ${dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-stone-700'}">${d}</span>
-                    <span class="text-[9px] ${rk === '友引' ? 'text-red-600 font-bold' : 'text-stone-400'}">${rk}</span>
-                </div>
-                ${recs.length ? `<div class="mt-1"><span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${a.org === 'YK' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}">施工 ${recs.length}件</span></div>` : ''}
+            cells += `<button type="button" onclick="v17SelectDay('${ds}')" class="relative text-left border rounded-md px-1.5 py-1.5 min-h-[62px] align-top transition ${isSel ? 'border-[#8c672a] ring-1 ring-[#8c672a] bg-amber-50' : 'border-stone-200 bg-white hover:bg-stone-50'} ${isToday ? 'ring-1 ring-stone-400' : ''}">
+                <div class="text-sm font-bold leading-none ${dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-stone-700'}">${d}</div>
+                <div class="mt-1 text-[10px] leading-none whitespace-nowrap ${rk === '友引' ? 'text-red-600 font-bold' : 'text-stone-400'}">${rk}</div>
+                ${recs.length ? `<div class="mt-1.5"><span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap ${a.org === 'YK' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}">施工 ${recs.length}件</span></div>` : ''}
             </button>`;
         }
         cal.innerHTML = `<div class="grid grid-cols-7 gap-1">${cells}</div>
