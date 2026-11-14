@@ -319,14 +319,14 @@
 
             <!-- モーダルボディ -->
             <div class="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
-                <!-- 1. 写真アルバム（最大9枚まで追加可・タップで拡大） -->
+                <!-- 1. 写真アルバム（タップで拡大） -->
                 <div>
                     <div class="flex items-center justify-between mb-2">
                         <h4 class="text-xs sm:text-sm font-bold text-stone-700 flex items-center gap-1.5">
                             <i class="fa-regular fa-images text-[#8c672a]"></i>
                             <span>現場写真アルバム</span>
                         </h4>
-                        <span id="modal-photo-count" class="text-xs text-stone-500">0 / 9枚</span>
+                        <span id="modal-photo-count" class="text-xs text-stone-500">0枚</span>
                     </div>
                     <div id="modal-area-images" class="grid grid-cols-3 gap-2">
                         <!-- JSで最大9枚＋追加枠を自動生成 -->
@@ -1120,6 +1120,10 @@
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.0.1（2026/11/14）</div>
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 2.3（2026/11/14）</div>
+                            <p class="mt-0.5">・投稿直後に同期のタイミングで記録が消えたように見える問題を修正（送信直後の記録は同期で上書きしないよう保護）<br>・サブ画像のサムネイルを写真の下部に枠付きで重ねて表示するよう変更<br>・全体図の写真は枚数制限をなくし、枠は写真の数だけ表示（追加枠は1つだけ）</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.2（2026/11/14）</div>
@@ -2277,7 +2281,9 @@
                             });
                         });
                         if (syncedRecs.length > 0) {
-                            constructionRecords = syncedRecs;
+                            const remoteIdSet = new Set(syncedRecs.map(r => r.id));
+                            const localOnlyRecs = constructionRecords.filter(r => !remoteIdSet.has(r.id) && !deletedConstructionIds.includes(r.id) && (Date.now() - (parseInt(String(r.id).replace('rec_', ''), 10) || 0)) < 10 * 60 * 1000);
+                            constructionRecords = localOnlyRecs.concat(syncedRecs);
                             persistLocalAppData();
                             renderConstructionList();
                         }
@@ -3654,11 +3660,11 @@
 
             const photos = (area.images || []).map(getSafeDriveImageUrl).filter(Boolean);
             area.images = photos;
-            if (countEl) countEl.textContent = `${photos.length} / 9枚（複数選択可）`;
+            if (countEl) countEl.textContent = `${photos.length}枚（複数選択可）`;
 
             let slotsHtml = '';
-            for (let i = 0; i < 9; i++) {
-                if (photos[i]) {
+            for (let i = 0; i < photos.length; i++) {
+                {
                     slotsHtml += `
                         <div class="relative aspect-square rounded-md overflow-hidden border border-stone-300 bg-stone-100 group">
                             <img src="${photos[i]}" onerror="handleDriveImgError(this)" onclick="openImageLightbox(this.src, '${escapeHtml(area.title)} - 写真${i + 1}')" alt="現場写真${i + 1}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition">
@@ -3669,16 +3675,15 @@
                             ` : ''}
                         </div>
                     `;
-                } else {
-                    slotsHtml += `
+                }
+            }
+            slotsHtml += `
                         <label class="aspect-square rounded-md border border-dashed border-stone-300 bg-white hover:bg-amber-50/60 flex flex-col items-center justify-center text-stone-400 hover:text-[#8c672a] cursor-pointer transition">
                             <i class="fa-solid fa-camera text-sm mb-1"></i>
                             <span class="text-[10px] font-bold">追加</span>
                             <input type="file" accept="image/*" multiple class="hidden" onchange="addAreaPhoto(event)">
                         </label>
                     `;
-                }
-            }
             container.innerHTML = slotsHtml;
         }
 
@@ -3692,18 +3697,8 @@
             event.target.value = '';
             if (files.length === 0) return;
 
-            const remainingSlots = 9 - area.images.length;
-            if (remainingSlots <= 0) {
-                showToast("写真は最大9枚まで登録できます", "error");
-                return;
-            }
-
-            const targetFiles = files.slice(0, remainingSlots);
-            if (files.length > remainingSlots) {
-                showToast(`空き枠が${remainingSlots}枚のため、最初の${remainingSlots}枚を追加します`, "info");
-            } else {
-                showToast(`${targetFiles.length}枚の写真を最適化してGoogleドライブへ保存中...`, "info");
-            }
+            const targetFiles = files;
+            showToast(`${targetFiles.length}枚の写真を最適化してGoogleドライブへ保存中...`, "info");
 
             for (const file of targetFiles) {
                 const compressedDataUrl = await compressImageFileToDataUrl(file, 1600, 0.85);
@@ -4331,12 +4326,12 @@
 
                 return `
                     <div class="bg-white rounded-md border ${rec.locked ? 'border-amber-400' : 'border-stone-200'} shadow-2xs overflow-hidden flex flex-col sm:flex-row">
-                        <div class="sm:w-2/5 h-44 sm:h-auto bg-stone-100 flex-none">
+                        <div class="relative sm:w-2/5 h-44 sm:h-auto bg-stone-100 flex-none">
                             <img src="${rec.image}" alt="施工記録" onclick="openImageViewer('${escapeHtml(rec.id)}', this.src)" class="w-full h-full object-cover cursor-pointer">
+                            ${v21ThumbStripHtml(rec)}
                         </div>
                         <div class="p-4 flex-1 flex flex-col justify-between space-y-2">
                             <div>
-                                ${v21ThumbStripHtml(rec)}
                                 <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-stone-500 mb-1.5">
                                     <div class="flex flex-wrap items-center gap-1.5">
                                         <span class="font-bold text-stone-700 whitespace-nowrap">${escapeHtml(formatJapaneseDate(rec.date))}</span>
@@ -5908,8 +5903,8 @@
         if (!subsOnly.length) return '';
         const hasMain = rec.image && String(rec.image).indexOf('placehold.co') < 0;
         const urls = (hasMain ? [rec.image] : []).concat(subsOnly);
-        const thumbs = urls.map((u, i) => '<img src="' + escapeHtml(u) + '" data-full="' + escapeHtml(u) + '" onclick="v21SwapCardImage(this)" alt="写真' + (i + 1) + '" class="v21-thumb w-11 h-11 object-cover rounded cursor-pointer border-2 ' + (i === 0 ? 'border-[#8c672a]' : 'border-transparent') + '">').join('');
-        return '<div class="flex flex-wrap gap-1.5 mb-1.5">' + thumbs + '</div>';
+        const thumbs = urls.map((u, i) => '<img src="' + escapeHtml(u) + '" data-full="' + escapeHtml(u) + '" onclick="event.stopPropagation(); v21SwapCardImage(this)" alt="写真' + (i + 1) + '" class="v21-thumb w-14 h-14 object-cover rounded-md cursor-pointer shadow border-2 ' + (i === 0 ? 'border-[#8c672a]' : 'border-white/80') + '">').join('');
+        return '<div class="absolute bottom-1.5 left-1.5 right-1.5 flex gap-1.5 overflow-x-auto">' + thumbs + '</div>';
     }
     function v21CardImageUrl(u) {
         if (!u) return u;
@@ -5931,9 +5926,9 @@
         if (main) main.src = v21CardImageUrl(thumbEl.getAttribute('data-full') || thumbEl.src);
         card.querySelectorAll('.v21-thumb').forEach(t => {
             t.classList.remove('border-[#8c672a]');
-            t.classList.add('border-transparent');
+            t.classList.add('border-white/80');
         });
-        thumbEl.classList.remove('border-transparent');
+        thumbEl.classList.remove('border-white/80');
         thumbEl.classList.add('border-[#8c672a]');
     }
     function v21SetMosaicMode(mode) {
