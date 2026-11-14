@@ -627,7 +627,7 @@
                     </div>
 
                     <p class="text-xs text-stone-600 leading-relaxed">
-                        ※写真上の<strong>喪家名・遺影・個人情報</strong>が写っている部分を指やマウスでなぞるとモザイクがかかります。
+                        ※写真上の<strong>喪家名・遺影・個人情報</strong>が写っている部分を指やマウスでなぞるとモザイクがかかります。ピンチ操作で拡大縮小、ダブルタップで元の大きさに戻ります。
                     </p>
 
                     <div class="flex flex-wrap items-center gap-3 bg-white p-2 rounded-md border border-stone-200">
@@ -1100,6 +1100,14 @@
                 <!-- サブ画面4: 更新履歴 -->
                 <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 2.0（2026/11/14）</div>
+                            <p class="mt-0.5">・投稿画像を高画質化（保存サイズを大きくし、花や細部が分かる画質に。モザイクの粗さは従来と同じに調整）<br>・カードの写真をタップすると大きな画像で開くように（ピンチ拡大・ドラッグ移動対応）<br>・モザイク加工中もピンチで拡大縮小できるように</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.9.1（2026/11/14）</div>
+                            <p class="mt-0.5">・カードの名前や担当バッジが途中で折れないように<br>・編集ボタンが別の記録を開かないよう、カード自身から対象を特定する方式に変更。編集画面のタイトルにも日付と内容を表示<br>・モザイクがタッチ操作の二重反応で意図しない場所にかかる場合があるのを防止</p>
+                        </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.9（2026/11/14）</div>
                             <p class="mt-0.5">・デザインの仕組み（Tailwind）をネット読み込みからファイル内蔵に変更。見た目はそのまま、初回表示が速くなり、電波が悪くても崩れません</p>
@@ -3664,7 +3672,7 @@
             }
 
             for (const file of targetFiles) {
-                const compressedDataUrl = await compressImageFileToDataUrl(file, 1024, 0.78);
+                const compressedDataUrl = await compressImageFileToDataUrl(file, 1600, 0.85);
                 area.images.push(compressedDataUrl);
             }
 
@@ -3903,7 +3911,7 @@
             event.target.value = '';
 
             for (const file of files) {
-                const compressed = await compressImageFileToDataUrl(file, 1024, 0.78);
+                const compressed = await compressImageFileToDataUrl(file, 1600, 0.85);
                 const idx = pendingCommentPhotos.length + 1;
                 pendingCommentPhotos.push({
                     label: `写真${idx}`,
@@ -4087,6 +4095,7 @@
             window.addEventListener('mouseup', () => isDrawingMosaic = false);
 
             mosaicCanvas.addEventListener('touchstart', (e) => {
+                window.__lastMosaicTouch = Date.now();
                 e.preventDefault();
                 startMosaic(e.touches[0]);
             }, { passive: false });
@@ -4094,7 +4103,7 @@
                 e.preventDefault();
                 drawMosaic(e.touches[0]);
             }, { passive: false });
-            window.addEventListener('touchend', () => isDrawingMosaic = false);
+            window.addEventListener('touchend', () => { window.__lastMosaicTouch = Date.now(); isDrawingMosaic = false; });
         }
 
         function loadSamplePhotoForMosaic() {
@@ -4115,7 +4124,7 @@
             img.crossOrigin = "Anonymous";
             img.onload = function() {
                 originalImageObj = img;
-                const maxWidth = 500;
+                const maxWidth = 1600;
                 const scale = Math.min(1, maxWidth / img.width);
                 mosaicCanvas.width = img.width * scale;
                 mosaicCanvas.height = img.height * scale;
@@ -4133,12 +4142,16 @@
         }
 
         function startMosaic(e) {
+            if (window.__pinching) return;
+            if (e && e.type && e.type.indexOf('mouse') === 0 && Date.now() - (window.__lastMosaicTouch || 0) < 800) return;
             if (!originalImageObj) return;
             isDrawingMosaic = true;
             drawMosaic(e);
         }
 
         function drawMosaic(e) {
+            if (window.__pinching) return;
+            if (e && e.type && e.type.indexOf('mouse') === 0 && Date.now() - (window.__lastMosaicTouch || 0) < 800) return;
             if (!isDrawingMosaic || !originalImageObj) return;
 
             const rect = mosaicCanvas.getBoundingClientRect();
@@ -4148,8 +4161,8 @@
             const x = (e.clientX - rect.left) * scaleX;
             const y = (e.clientY - rect.top) * scaleY;
 
-            const brushSize = parseInt(document.getElementById('mosaic-brush-size').value, 10);
-            const blockSize = 10;
+            const brushSize = parseInt(document.getElementById('mosaic-brush-size').value, 10) * Math.max(1, mosaicCanvas.width / 500);
+            const blockSize = Math.max(10, Math.round(mosaicCanvas.width / 50));
 
             const startX = Math.max(0, Math.floor((x - brushSize / 2) / blockSize) * blockSize);
             const startY = Math.max(0, Math.floor((y - brushSize / 2) / blockSize) * blockSize);
@@ -4210,7 +4223,7 @@
 
             let imageDataUrl = "https://placehold.co/400x260/e7e5e4/57534e?text=画像なし";
             if (originalImageObj) {
-                imageDataUrl = mosaicCanvas.toDataURL('image/jpeg', 0.85);
+                imageDataUrl = mosaicCanvas.toDataURL('image/jpeg', 0.87);
             }
 
             const newRecObj = {
@@ -4273,14 +4286,14 @@
                 return `
                     <div class="bg-white rounded-md border ${rec.locked ? 'border-amber-400' : 'border-stone-200'} shadow-2xs overflow-hidden flex flex-col sm:flex-row">
                         <div class="sm:w-2/5 h-44 sm:h-auto bg-stone-100 flex-none">
-                            <img src="${rec.image}" alt="施工記録" class="w-full h-full object-cover">
+                            <img src="${rec.image}" alt="施工記録" onclick="openImageViewer('${escapeHtml(rec.id)}')" class="w-full h-full object-cover cursor-pointer">
                         </div>
                         <div class="p-4 flex-1 flex flex-col justify-between space-y-2">
                             <div>
                                 <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-stone-500 mb-1.5">
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="font-bold text-stone-700">${escapeHtml(formatJapaneseDate(rec.date))}</span>
-                                        <span class="font-bold text-stone-800">${escapeHtml(rec.author || '')}</span>
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <span class="font-bold text-stone-700 whitespace-nowrap">${escapeHtml(formatJapaneseDate(rec.date))}</span>
+                                        <span class="font-bold text-stone-800 whitespace-nowrap">${escapeHtml(rec.author || '')}</span>
                                         ${getOrgBadgeHtml(rec.org)}
                                         ${getAssigneeBadgeHtml(rec.date)}
                                     </div>
@@ -5530,7 +5543,14 @@
         if (!container || !currentUser) return;
         const filtered = v17FilteredRecords();
         Array.from(container.children).forEach((card, idx) => {
-            const rec = filtered[idx];
+            // カード自身の削除ボタンから記録IDを特定（並び順に依存しない）
+            let rec = null;
+            const ownDelBtn = card.querySelector('button[onclick*="deleteConstructionRecord"]');
+            if (ownDelBtn) {
+                const mm = (ownDelBtn.getAttribute('onclick') || '').match(/deleteConstructionRecord\('([^']+)'\)/);
+                if (mm) rec = constructionRecords.find(r => r.id === mm[1]) || null;
+            }
+            if (!rec) rec = filtered[idx];
             if (!rec) return;
             const body = card.children[1] || card;
             if (!card.querySelector('.v18-editing-badge')) {
@@ -5587,7 +5607,7 @@
         document.querySelectorAll('input[name="used-eq"]').forEach(cb => { cb.checked = (rec.equipmentIds || []).includes(cb.value); });
         try { originalImageObj = null; } catch (e) {}
         const titleSpan = document.querySelector('#construction-modal h3 span');
-        if (titleSpan) titleSpan.textContent = '施工記録の編集';
+        if (titleSpan) titleSpan.textContent = '施工記録の編集（' + normalizeDateStr(rec.date).slice(5).replace('-', '/') + (rec.notes ? ' ' + rec.notes : '') + '）';
         showToast('写真は新しく選び直さなければ、今の写真のままです', 'info');
         v18ClaimBackground('construction', recId, holder => {
             if (v18EditingConstructionId !== recId) return;
@@ -5607,7 +5627,7 @@
             if (!date || !notes) { showToast('施工日と施工内容を入力してください', 'error'); return; }
             const selectedEq = Array.from(document.querySelectorAll('input[name="used-eq"]:checked')).map(cb => cb.value);
             rec.date = date; rec.code = code; rec.notes = notes; rec.equipmentIds = selectedEq;
-            if (originalImageObj) { try { rec.image = mosaicCanvas.toDataURL('image/jpeg', 0.85); } catch (e) {} }
+            if (originalImageObj) { try { rec.image = mosaicCanvas.toDataURL('image/jpeg', 0.87); } catch (e) {} }
             try { syncUpdateConstructionToCloud(rec); } catch (e) {}
             try { markUnsaved(); } catch (e) {}
             try { persistLocalAppData(); } catch (e) {}
@@ -5702,6 +5722,105 @@
         const origCloseCatalog = closeCatalogEditor;
         closeCatalogEditor = function () { const r = origCloseCatalog.apply(this, arguments); v18ReleaseEdit(); return r; };
     }
+
+    // ===== Ver 2.0 画像の高画質化・拡大表示・ピンチズーム =====
+    function v20LargeImageUrl(url) {
+        if (!url) return url;
+        if (url.indexOf('drive.google.com/thumbnail') >= 0) {
+            if (/[?&]sz=/.test(url)) return url.replace(/([?&])sz=[^&]*/, '$1sz=w1600');
+            return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'sz=w1600';
+        }
+        if (url.indexOf('lh3.googleusercontent.com/d/') >= 0 && !/=w\d+/.test(url)) return url + '=w1600';
+        return url;
+    }
+    function v20AttachZoom(el, opts) {
+        opts = opts || {};
+        const state = { scale: 1, tx: 0, ty: 0 };
+        el.style.transformOrigin = '0 0';
+        let startDist = 0, startScale = 1, startTx = 0, startTy = 0, startMid = null, rect0 = null, lastSingle = null;
+        function apply() { el.style.transform = 'translate(' + state.tx + 'px, ' + state.ty + 'px) scale(' + state.scale + ')'; }
+        function reset() { state.scale = 1; state.tx = 0; state.ty = 0; apply(); }
+        function dist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+        function mid(t) { return { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 }; }
+        el.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                window.__pinching = true;
+                startDist = dist(e.touches); startScale = state.scale; startTx = state.tx; startTy = state.ty;
+                startMid = mid(e.touches); rect0 = el.getBoundingClientRect();
+                e.preventDefault();
+            } else if (e.touches.length === 1) {
+                lastSingle = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        }, { passive: false });
+        el.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && startDist > 0 && rect0) {
+                const s = Math.min(5, Math.max(1, startScale * dist(e.touches) / startDist));
+                const m = mid(e.touches);
+                const px = (startMid.x - rect0.left) / startScale;
+                const py = (startMid.y - rect0.top) / startScale;
+                const layoutLeft = rect0.left - startTx;
+                const layoutTop = rect0.top - startTy;
+                state.scale = s;
+                state.tx = m.x - layoutLeft - px * s;
+                state.ty = m.y - layoutTop - py * s;
+                apply();
+                e.preventDefault();
+            } else if (e.touches.length === 1 && opts.panSingle && state.scale > 1 && lastSingle) {
+                state.tx += e.touches[0].clientX - lastSingle.x;
+                state.ty += e.touches[0].clientY - lastSingle.y;
+                lastSingle = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                apply();
+                e.preventDefault();
+            }
+        }, { passive: false });
+        const endTouch = (e) => {
+            if (e.touches.length < 2) {
+                startDist = 0;
+                setTimeout(() => { window.__pinching = false; }, 50);
+                if (state.scale <= 1.02) reset();
+            }
+            if (e.touches.length === 0) lastSingle = null;
+        };
+        el.addEventListener('touchend', endTouch);
+        el.addEventListener('touchcancel', endTouch);
+        el.addEventListener('dblclick', reset);
+        el.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const f = e.deltaY < 0 ? 1.12 : 0.89;
+            state.scale = Math.min(5, Math.max(1, state.scale * f));
+            if (state.scale === 1) { state.tx = 0; state.ty = 0; }
+            apply();
+        }, { passive: false });
+        return { reset, state };
+    }
+    function openImageViewer(recId) {
+        const rec = constructionRecords.find(r => r.id === recId);
+        if (!rec || !rec.image) return;
+        closeImageViewer();
+        const ov = document.createElement('div');
+        ov.id = 'v20-lightbox';
+        ov.className = 'fixed inset-0 z-[80] bg-stone-950/95 flex flex-col';
+        ov.innerHTML = '<div class="flex items-center justify-between px-4 py-3 text-stone-100 gap-3">'
+            + '<div class="text-xs sm:text-sm font-bold truncate">' + escapeHtml(formatJapaneseDate(rec.date)) + '｜' + escapeHtml(rec.notes || '') + '</div>'
+            + '<button type="button" id="v20-lightbox-close" class="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 rounded text-sm font-bold whitespace-nowrap">閉じる</button>'
+            + '</div>'
+            + '<div class="flex-1 overflow-hidden flex items-center justify-center p-2" id="v20-lightbox-stage">'
+            + '<img src="' + escapeHtml(v20LargeImageUrl(rec.image)) + '" alt="施工写真（拡大）" class="max-w-full max-h-full object-contain select-none" style="touch-action:none;" draggable="false">'
+            + '</div>'
+            + '<p class="text-center text-[11px] text-stone-400 pb-3">ピンチで拡大縮小／指でドラッグ移動／ダブルタップで元に戻る</p>';
+        document.body.appendChild(ov);
+        document.getElementById('v20-lightbox-close').addEventListener('click', closeImageViewer);
+        ov.addEventListener('click', (e) => { if (e.target === ov || e.target.id === 'v20-lightbox-stage') closeImageViewer(); });
+        v20AttachZoom(ov.querySelector('img'), { panSingle: true });
+    }
+    function closeImageViewer() {
+        const ov = document.getElementById('v20-lightbox');
+        if (ov) ov.remove();
+    }
+    (function initV20() {
+        const mc = document.getElementById('mosaic-canvas');
+        if (mc) v20AttachZoom(mc);
+    })();
     function getAssigneeFor(y, m) {
         if (y <= 2026) return { org: 'FI', label: 'フローリスト石原' };
         return (m % 2 === 1) ? { org: 'YK', label: 'ユー花園' } : { org: 'FI', label: 'フローリスト石原' };
@@ -5713,7 +5832,7 @@
             if (!p) return '';
             const a = getAssigneeFor(p.y, p.mo);
             const cls = a.org === 'YK' ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-sky-100 text-sky-900 border-sky-300';
-            return `<span class="px-2 py-0.5 border ${cls} text-[10px] font-bold rounded">担当: ${a.label}</span>`;
+            return `<span class="px-2 py-0.5 border ${cls} text-[10px] font-bold rounded whitespace-nowrap">担当: ${a.label}</span>`;
         } catch (e) { return ''; }
     }
     function renderAssigneeBanner() {
