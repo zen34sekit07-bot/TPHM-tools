@@ -633,8 +633,14 @@
                             <button type="button" id="mosaic-mode-pen" onclick="v21SetMosaicMode('pen')" class="px-2.5 py-1 text-xs rounded-md font-bold whitespace-nowrap bg-[#8c672a] text-white"><i class="fa-solid fa-pen mr-1"></i>ペン</button>
                             <button type="button" id="mosaic-mode-move" onclick="v21SetMosaicMode('move')" class="px-2.5 py-1 text-xs rounded-md font-bold whitespace-nowrap bg-stone-100 text-stone-700"><i class="fa-solid fa-up-down-left-right mr-1"></i>移動</button>
                         </div>
+                        <button type="button" id="mosaic-undo-btn" onclick="v22MosaicUndo()" class="px-2.5 py-1 text-xs bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md font-bold whitespace-nowrap disabled:opacity-40" disabled>
+                            <i class="fa-solid fa-rotate-left mr-1"></i>アンドゥ
+                        </button>
+                        <button type="button" id="mosaic-redo-btn" onclick="v22MosaicRedo()" class="px-2.5 py-1 text-xs bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md font-bold whitespace-nowrap disabled:opacity-40" disabled>
+                            <i class="fa-solid fa-rotate-right mr-1"></i>リドゥ
+                        </button>
                         <button type="button" onclick="resetMosaicCanvas()" class="px-2.5 py-1 text-xs bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md font-bold whitespace-nowrap">
-                            <i class="fa-solid fa-rotate-left mr-1"></i>モザイクやり直し
+                            <i class="fa-solid fa-eraser mr-1"></i>クリア
                         </button>
                     </div>
 
@@ -1114,6 +1120,10 @@
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.0.1（2026/11/14）</div>
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 2.2（2026/11/14）</div>
+                            <p class="mt-0.5">・編集画面で前の記録の写真が残って見える問題を修正（開くたびに消去し、編集時はその記録の現在の写真を表示。触らなければ写真は差し替わりません）<br>・「モザイクやり直し」を「クリア」に変更し、アンドゥ／リドゥボタンを追加<br>・サブ写真がカードに表示されるよう同期後の再表示を補強</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.1.1（2026/11/14）</div>
@@ -4188,6 +4198,7 @@
             if (window.__pinching) return;
             if (e && e.type && e.type.indexOf('mouse') === 0 && Date.now() - (window.__lastMosaicTouch || 0) < 800) return;
             if (!isDrawingMosaic || !originalImageObj) return;
+            window.__mosaicDirty = true;
 
             const rect = mosaicCanvas.getBoundingClientRect();
             const scaleX = mosaicCanvas.width / rect.width;
@@ -5670,7 +5681,7 @@
             if (!date || !code) { showToast('施工日と規格を入力してください', 'error'); return; }
             const selectedEq = Array.from(document.querySelectorAll('input[name="used-eq"]:checked')).map(cb => cb.value);
             rec.date = date; rec.code = code; rec.notes = notes; rec.equipmentIds = selectedEq;
-            if (originalImageObj) { try { rec.image = mosaicCanvas.toDataURL('image/jpeg', 0.87); } catch (e) {} }
+            if (window.__mosaicDirty && originalImageObj) { try { rec.image = mosaicCanvas.toDataURL('image/jpeg', 0.87); } catch (e) {} }
             rec.updatedAt = new Date().toISOString();
             v21ProcessSubsAndMeta(rec);
             v21SyncEditedConstruction(rec);
@@ -6004,6 +6015,7 @@
             window.V21.pendingSubs = [];
             v21RenderSubThumbs();
             v21SetMosaicMode('pen');
+            v22ResetMosaicState();
             if (window.__mosaicZoom) window.__mosaicZoom.reset();
             return origOpenNew.apply(this, arguments);
         };
@@ -6016,6 +6028,7 @@
             if (rec) {
                 window.V21.pendingSubs = (rec.subImages || []).map(u => ({ src: u }));
                 v21RenderSubThumbs();
+                v22LoadMainPhotoIntoCanvas(rec);
             }
             return r;
         };
@@ -6041,7 +6054,7 @@
         const origFetchV21 = fetchUsersFromDriveSheet;
         fetchUsersFromDriveSheet = async function () {
             const r = await origFetchV21.apply(this, arguments);
-            try { v21ApplyMeta(); } catch (e) {}
+            try { v21ApplyMeta(); if (currentUser) renderConstructionList(); } catch (e) {}
             return r;
         };
     }
@@ -6056,6 +6069,112 @@
                 try { postCatalogToGas({ action: 'deleteRecordMeta', recordId: recId }); } catch (e) {}
             }
             return r;
+        };
+    }
+
+    // ===== Ver 2.2 キャンバス残像の解消・編集時に現在の写真を表示・モザイク履歴 =====
+    window.__mosaicDirty = false;
+    window.__mosaicHist = { undo: [], redo: [] };
+    function v22PaintHistButtons() {
+        const u = document.getElementById('mosaic-undo-btn');
+        const r = document.getElementById('mosaic-redo-btn');
+        if (u) u.disabled = !window.__mosaicHist.undo.length;
+        if (r) r.disabled = !window.__mosaicHist.redo.length;
+    }
+    function v22ResetMosaicState() {
+        window.__mosaicDirty = false;
+        window.__mosaicHist = { undo: [], redo: [] };
+        v22PaintHistButtons();
+        try { originalImageObj = null; } catch (e) {}
+        try {
+            if (mosaicCtx && mosaicCanvas) mosaicCtx.clearRect(0, 0, mosaicCanvas.width, mosaicCanvas.height);
+            const ph = document.getElementById('canvas-placeholder');
+            if (ph) ph.classList.remove('hidden');
+        } catch (e) {}
+    }
+    function v22MosaicSnapshot() {
+        try { return mosaicCanvas.toDataURL('image/jpeg', 0.92); } catch (e) { return null; }
+    }
+    function v22MosaicPushHistory() {
+        const s = v22MosaicSnapshot();
+        if (!s) return;
+        window.__mosaicHist.undo.push(s);
+        if (window.__mosaicHist.undo.length > 20) window.__mosaicHist.undo.shift();
+        window.__mosaicHist.redo = [];
+        v22PaintHistButtons();
+    }
+    function v22MosaicRestore(dataUrl) {
+        const img = new Image();
+        img.onload = function () {
+            try {
+                mosaicCtx.drawImage(img, 0, 0, mosaicCanvas.width, mosaicCanvas.height);
+                window.__mosaicDirty = true;
+            } catch (e) {}
+            v22PaintHistButtons();
+        };
+        img.src = dataUrl;
+    }
+    function v22MosaicUndo() {
+        const h = window.__mosaicHist;
+        if (!h.undo.length) return;
+        const cur = v22MosaicSnapshot();
+        if (cur) h.redo.push(cur);
+        v22MosaicRestore(h.undo.pop());
+        v22PaintHistButtons();
+    }
+    function v22MosaicRedo() {
+        const h = window.__mosaicHist;
+        if (!h.redo.length) return;
+        const cur = v22MosaicSnapshot();
+        if (cur) h.undo.push(cur);
+        v22MosaicRestore(h.redo.pop());
+        v22PaintHistButtons();
+    }
+    function v22LoadMainPhotoIntoCanvas(rec) {
+        if (!rec || !rec.image || String(rec.image).indexOf('http') !== 0) return;
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = function () {
+            try {
+                const maxWidth = 1600;
+                const scale = Math.min(1, maxWidth / img.width);
+                mosaicCanvas.width = img.width * scale;
+                mosaicCanvas.height = img.height * scale;
+                mosaicCtx.drawImage(img, 0, 0, mosaicCanvas.width, mosaicCanvas.height);
+                originalImageObj = img;
+                window.__mosaicDirty = false;
+                window.__mosaicHist = { undo: [], redo: [] };
+                v22PaintHistButtons();
+                const ph = document.getElementById('canvas-placeholder');
+                if (ph) ph.classList.add('hidden');
+            } catch (e) {}
+        };
+        img.src = v20LargeImageUrl(rec.image);
+    }
+    (function initV22() {
+        const mc = document.getElementById('mosaic-canvas');
+        if (mc && mc.parentElement) {
+            const push = () => { if (window.__mosaicMode !== 'move' && originalImageObj) v22MosaicPushHistory(); };
+            mc.parentElement.addEventListener('touchstart', push, { capture: true, passive: true });
+            mc.parentElement.addEventListener('mousedown', push, { capture: true });
+        }
+    })();
+    if (typeof resetMosaicCanvas === 'function') {
+        const origResetMosaic = resetMosaicCanvas;
+        resetMosaicCanvas = function () {
+            if (originalImageObj) v22MosaicPushHistory();
+            const r = origResetMosaic.apply(this, arguments);
+            window.__mosaicDirty = false;
+            return r;
+        };
+    }
+    if (typeof loadImageToMosaicCanvas === 'function') {
+        const origLoadMosaic = loadImageToMosaicCanvas;
+        loadImageToMosaicCanvas = function () {
+            window.__mosaicHist = { undo: [], redo: [] };
+            window.__mosaicDirty = false;
+            v22PaintHistButtons();
+            return origLoadMosaic.apply(this, arguments);
         };
     }
     (function initV20() {
