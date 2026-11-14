@@ -147,6 +147,23 @@
     <!-- メインコンテンツエリア -->
     <main class="flex-1 overflow-y-auto p-3 sm:p-4 max-w-7xl w-full mx-auto flex flex-col gap-3">
 
+        <!-- Ver1.6: 施工担当月バナー -->
+        <div id="assignee-banner" class="bg-amber-50 px-3.5 py-2.5 rounded-lg border border-amber-300/90 shadow-2xs flex-none">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-[13px] text-stone-800">
+                <span class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-calendar-check text-[#8c672a]"></i>施工担当</span>
+                <span id="assignee-current">今月: 読み込み中…</span>
+                <span id="assignee-next" class="text-stone-500"></span>
+            </div>
+            <details class="mt-1.5">
+                <summary class="text-[11px] text-[#8c672a] font-bold cursor-pointer">担当ルールと2027年の担当表を見る</summary>
+                <div class="mt-1.5 text-[11px] sm:text-xs text-stone-700 leading-relaxed space-y-1.5">
+                    <p>運用ルール: 2026年内は全月フローリスト石原が担当。2027年以降は、奇数月＝ユー花園、偶数月＝フローリスト石原が担当します。</p>
+                    <div id="assignee-year-table" class="grid grid-cols-3 sm:grid-cols-4 gap-1"></div>
+                    <p class="text-stone-400">※担当は目安です。実際の施工者が担当会社と異なる場合も、施工記録には担当バッジが表示されます。</p>
+                </div>
+            </details>
+        </div>
+
         <!-- タブごとの用途・使い方案内枠 -->
         <div id="tab-guide-box" class="bg-[#fdfbf7] px-3.5 py-2.5 rounded-lg border border-stone-300/90 shadow-2xs flex items-start gap-2.5 flex-none">
             <i id="tab-guide-icon" class="fa-solid fa-map-location-dot text-[#8c672a] text-sm mt-0.5 shrink-0"></i>
@@ -236,6 +253,21 @@
              ========================================== -->
         <section id="view-equipment" class="tab-view hidden flex-1">
             <div class="bg-[#fdfbf7] p-4 sm:p-5 rounded-lg border border-stone-300/90 shadow-xs space-y-4">
+                <!-- Ver1.6: 共同カタログ（祭壇パターン） -->
+                <div class="bg-white p-3.5 rounded-md border border-stone-300 space-y-2.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-sm sm:text-base font-bold text-stone-800 flex items-center gap-2">
+                            <i class="fa-solid fa-book-open text-[#8c672a]"></i>
+                            <span>共同カタログ（祭壇パターン）</span>
+                        </h3>
+                        <button type="button" onclick="openCatalogEditor(null)" class="px-3 py-1.5 bg-[#8c672a] hover:bg-[#75551f] text-white rounded text-xs font-bold transition">
+                            <i class="fa-solid fa-plus mr-1"></i>パターンを追加
+                        </button>
+                    </div>
+                    <p class="text-[11px] sm:text-xs text-stone-500 leading-relaxed">ホール専用祭壇の構成パターンを登録しておくと、施工記録の作成時に「使用什器」へワンタップで反映できます。データはこの端末に保存され、バックアップ書き出しにも含まれます（クラウド同期はGAS側の対応後に有効になります）。</p>
+                    <div id="catalog-list" class="space-y-2"></div>
+                </div>
+
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
                     <div>
                         <h2 class="text-base sm:text-lg font-bold text-stone-800 flex items-center gap-2">
@@ -558,6 +590,17 @@
                 <!-- 使用什器の紐付け -->
                 <div>
                     <label class="block text-xs font-bold text-stone-700 mb-1.5">使用した什器・花器を選択（複数選択可）</label>
+                    <div class="bg-amber-50/70 p-3 rounded-md border border-amber-200 space-y-2">
+                        <label class="text-xs sm:text-sm font-bold text-stone-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-book-open text-[#8c672a]"></i>
+                            <span>共同カタログ（祭壇パターン）から選ぶ</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <select id="const-catalog-select" class="flex-1 p-2 bg-white border border-stone-300 rounded text-xs sm:text-sm"></select>
+                            <button type="button" onclick="applySelectedCatalogPattern()" class="px-3 py-2 bg-[#8c672a] hover:bg-[#75551f] text-white rounded text-xs font-bold transition whitespace-nowrap">使用什器に反映</button>
+                        </div>
+                        <p class="text-[11px] text-stone-500">パターンを反映すると、下の使用什器のチェックが自動で入ります（あとから個別に外したり追加したりできます）。</p>
+                    </div>
                     <div id="const-equipment-selector" class="space-y-2">
                         <!-- JSで階層別に選択ボタンを生成 -->
                     </div>
@@ -862,6 +905,14 @@
                 </button>
 
                 <!-- 4. 更新履歴 -->
+                <button type="button" onclick="exportBackupJson()" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
+                    <span class="flex items-center gap-2.5 font-bold text-stone-800"><i class="fa-solid fa-download text-[#8c672a]"></i>バックアップを書き出す</span>
+                    <span class="text-[10px] text-stone-400">JSONファイルで保存</span>
+                </button>
+                <button type="button" onclick="document.getElementById('backup-import-input').click()" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
+                    <span class="flex items-center gap-2.5 font-bold text-stone-800"><i class="fa-solid fa-upload text-[#8c672a]"></i>バックアップから復元する</span>
+                    <span class="text-[10px] text-stone-400">管理者のみ・JSON読み込み</span>
+                </button>
                 <button type="button" onclick="openSettingsSubModal('changelog')" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
                     <div class="flex items-center gap-3 min-w-0">
                         <span class="w-9 h-9 rounded-md bg-stone-100 text-stone-700 flex items-center justify-center shrink-0">
@@ -1048,6 +1099,10 @@
                 <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.6（2026/11/14）</div>
+                            <p class="mt-0.5">・今月／来月の施工担当（2026年内はフローリスト石原、2027年以降は奇数月＝ユー花園／偶数月＝フローリスト石原）をトップに表示し、施工記録にも担当バッジを表示<br>・共同カタログ（祭壇パターン）を什器管理に追加。パターンを選ぶと施工記録の使用什器へ自動セット（クラウド同期はGASへの upsertCatalog / deleteCatalog アクション追加で有効化）<br>・設定にバックアップ（JSON書き出し／読み込み）を追加<br>・パスワードをハッシュ化して保存するよう変更（ログイン成功時に自動で移行。管理画面ではパスワードを表示しません）<br>・同一エリアIDの重複データを取り込まないようマージ処理を追加</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.5（2026/11/13）</div>
                             <p class="mt-0.5">・館内図ピンタップ時の挙動を改善（ピン付近ズーム＋タイトル小窓表示→再タップで詳細画面、×で全体図へ自動復帰）<br>・設定画面を項目別メニュー構成へ刷新し、アカウント情報の随時変更・管理者ツールでの新規発行/削除/変更履歴共有に対応</p>
                         </div>
@@ -1170,15 +1225,35 @@
         let deletedAreaIds = loadJsonArrayStorage('mizuhodai_deleted_area_ids');
         let deletedCommentIds = loadJsonArrayStorage('mizuhodai_deleted_comment_ids');
         let deletedConstructionIds = loadJsonArrayStorage('mizuhodai_deleted_construction_ids');
+        let deletedPhotoUrls = loadJsonArrayStorage('mizuhodai_deleted_photo_urls');
         let activeCloudUploads = 0;
         let lastCloudMutationTime = 0;
 
         function getSafeDriveImageUrl(url) {
             if (!url) return '';
-            const s = String(url);
-            // 以前の文字化けサンプル画像URL(?????)は除外
-            if (s.includes('placehold.co')) return '';
+            const s = String(url).trim();
+            if (!s || s.includes('placehold.co')) return '';
+            if (deletedPhotoUrls.includes(s)) return '';
             return s;
+        }
+
+        function saveAreaPhotoUrlBackup() {
+            try {
+                const backup = {};
+                Object.keys(areaData).forEach(k => {
+                    const imgs = (areaData[k] && Array.isArray(areaData[k].images)) ? areaData[k].images : [];
+                    backup[k] = imgs.filter(u => String(u).startsWith('http'));
+                });
+                localStorage.setItem('mizuhodai_area_photo_urls_v1', JSON.stringify(backup));
+            } catch (e) {}
+        }
+
+        function loadAreaPhotoUrlBackup() {
+            try {
+                const raw = localStorage.getItem('mizuhodai_area_photo_urls_v1');
+                if (raw) return JSON.parse(raw) || {};
+            } catch (e) {}
+            return {};
         }
 
         function handleDriveImgError(imgEl) {
@@ -1297,10 +1372,13 @@
             });
             if (res && Array.isArray(res.images) && areaData[areaId]) {
                 const cleaned = res.images.map(getSafeDriveImageUrl).filter(Boolean);
-                areaData[areaId].images = cleaned;
-                persistAreaData();
-                if (currentSelectedAreaId === areaId && !document.getElementById('area-modal').classList.contains('hidden')) {
-                    renderAreaPhotoAlbum(areaData[areaId]);
+                if (cleaned.length > 0) {
+                    areaData[areaId].images = cleaned;
+                    saveAreaPhotoUrlBackup();
+                    persistAreaData();
+                    if (currentSelectedAreaId === areaId && !document.getElementById('area-modal').classList.contains('hidden')) {
+                        renderAreaPhotoAlbum(areaData[areaId]);
+                    }
                 }
             }
             return res;
@@ -1779,7 +1857,7 @@
             if (box) box.classList.toggle('hidden');
         }
 
-        function loginWithExistingAccount() {
+        async function loginWithExistingAccount() {
             const nameInput = document.getElementById('existing-name-input');
             const passInput = document.getElementById('existing-password-input');
             const name = nameInput ? nameInput.value.trim() : "";
@@ -1796,9 +1874,13 @@
                 return;
             }
 
-            if ((user.password || "") !== password) {
+            const pwOk = await verifyPassword(user, password);
+            if (!pwOk) {
                 showToast("パスワードが一致しません", "error");
                 return;
+            }
+            if (!isHashedPassword(user.password)) {
+                try { user.password = await hashPasswordForUser(user.id, password); } catch (e) {}
             }
 
             user.deviceHash = currentDeviceHash;
@@ -1807,7 +1889,7 @@
             completeLogin(user, true);
         }
 
-        function createIdAndLogin() {
+        async function createIdAndLogin() {
             const nameInput = document.getElementById('login-name-input');
             const name = nameInput ? nameInput.value.trim() : "";
             const orgRadio = document.querySelector('input[name="login-org"]:checked');
@@ -1834,7 +1916,10 @@
 
             const duplicateNameUser = usersDatabase.find(u => u.name === name);
             if (duplicateNameUser) {
-                if ((duplicateNameUser.password || "") === password) {
+                if (await verifyPassword(duplicateNameUser, password)) {
+                    if (!isHashedPassword(duplicateNameUser.password)) {
+                        try { duplicateNameUser.password = await hashPasswordForUser(duplicateNameUser.id, password); } catch (e) {}
+                    }
                     duplicateNameUser.deviceHash = currentDeviceHash;
                     duplicateNameUser.lastLogin = formatCurrentDateTime();
                     syncUserToDriveSheet(duplicateNameUser);
@@ -1856,7 +1941,7 @@
                 isAdmin: 0,
                 deviceHash: currentDeviceHash,
                 createdAt: nowStr,
-                password: password,
+                password: await hashPasswordForUser(newId, password),
                 lastLogin: nowStr
             };
 
@@ -1992,20 +2077,43 @@
                         deletedAreaIds = deletedAreaIds.filter(dId => remoteAreaIds.includes(dId));
                         saveJsonArrayStorage('mizuhodai_deleted_area_ids', deletedAreaIds);
 
+                        try {
+                            const _areaMap = new Map();
+                            data.areas.forEach(a0 => {
+                                const id0 = String(a0.id || '');
+                                if (!id0) return;
+                                if (!_areaMap.has(id0)) { _areaMap.set(id0, a0); return; }
+                                const prev = _areaMap.get(id0);
+                                const imgSet = new Map();
+                                [...(prev.images || []), ...(a0.images || [])].forEach(u => { if (u && !String(u).includes('placehold.co')) imgSet.set(String(u), true); });
+                                const merged = { ...prev, ...a0, images: [...imgSet.keys()] };
+                                ['title', 'color', 'icon'].forEach(k => { if (!merged[k]) merged[k] = prev[k]; });
+                                if (prev.details || a0.details) {
+                                    merged.details = { ...(a0.details || {}) };
+                                    Object.entries(prev.details || {}).forEach(([k, v]) => { if (!merged.details[k] && v) merged.details[k] = v; });
+                                }
+                                _areaMap.set(id0, merged);
+                            });
+                            data.areas = [..._areaMap.values()];
+                        } catch (e) {}
                         data.areas.forEach(rArea => {
                             const aId = String(rArea.id || '');
                             if (!aId || deletedAreaIds.includes(aId)) return;
                             const existingComments = (areaData[aId] && Array.isArray(areaData[aId].comments)) ? areaData[aId].comments : [];
                             const remoteImgs = Array.isArray(rArea.images) ? rArea.images.map(getSafeDriveImageUrl).filter(Boolean) : [];
-                            const localPendingImgs = (areaData[aId] && Array.isArray(areaData[aId].images))
-                                ? areaData[aId].images.filter(img => String(img).startsWith('data:image'))
+                            const backupMap = loadAreaPhotoUrlBackup();
+                            const backupImgs = Array.isArray(backupMap[aId]) ? backupMap[aId].map(getSafeDriveImageUrl).filter(Boolean) : [];
+                            const localExistingImgs = (areaData[aId] && Array.isArray(areaData[aId].images))
+                                ? areaData[aId].images.map(getSafeDriveImageUrl).filter(Boolean)
                                 : [];
+
                             const mergedImgs = [...remoteImgs];
-                            localPendingImgs.forEach(pImg => {
-                                if (mergedImgs.length < 9 && !mergedImgs.includes(pImg)) {
-                                    mergedImgs.push(pImg);
+                            [...backupImgs, ...localExistingImgs].forEach(lImg => {
+                                if (mergedImgs.length < 9 && !mergedImgs.includes(lImg)) {
+                                    mergedImgs.push(lImg);
                                 }
                             });
+
                             areaData[aId] = {
                                 title: String(rArea.title || ''),
                                 color: String(rArea.color || '#dc2626'),
@@ -2019,8 +2127,12 @@
                                 comments: existingComments
                             };
                         });
+                        saveAreaPhotoUrlBackup();
                         persistAreaData();
                         renderMapPins();
+                        if (currentSelectedAreaId && areaData[currentSelectedAreaId] && !document.getElementById('area-modal').classList.contains('hidden')) {
+                            renderAreaPhotoAlbum(areaData[currentSelectedAreaId]);
+                        }
                     }
 
                     // 各エリアのコメント・添付写真の同期
@@ -2187,7 +2299,8 @@
             } else if (sectionKey === 'account') {
                 document.getElementById('self-edit-name').value = currentUser.name || '';
                 document.getElementById('self-edit-org').value = currentUser.org || 'YK';
-                document.getElementById('self-edit-password').value = currentUser.password || '';
+                document.getElementById('self-edit-password').value = '';
+                document.getElementById('self-edit-password').placeholder = '変更する場合のみ入力（半角英数字10桁まで）';
             } else if (sectionKey === 'admin') {
                 renderUserDbTable();
                 renderAccountChangeHistory();
@@ -2213,7 +2326,7 @@
         }
 
         // 一般・管理者共通：自分のアカウント情報（名前・所属・パスワード）の随時変更
-        function saveSelfAccountChanges() {
+        async function saveSelfAccountChanges() {
             if (!currentUser) return;
             const newName = document.getElementById('self-edit-name').value.trim();
             const newOrg = document.getElementById('self-edit-org').value;
@@ -2223,7 +2336,7 @@
                 showToast("お名前を入力してください", "error");
                 return;
             }
-            if (!newPass || !/^[a-zA-Z0-9]{1,10}$/.test(newPass)) {
+            if (newPass && !/^[a-zA-Z0-9]{1,10}$/.test(newPass)) {
                 showToast("パスワードは半角英数字10桁以内で入力してください", "error");
                 return;
             }
@@ -2241,7 +2354,7 @@
             const changes = [];
             if (oldName !== newName) changes.push(`名前: ${oldName} → ${newName}`);
             if (oldOrg !== newOrg) changes.push(`所属: ${oldOrg} → ${newOrg}`);
-            if (oldPass !== newPass) changes.push(`パスワード変更`);
+            if (newPass) changes.push(`パスワード変更`);
 
             if (changes.length === 0) {
                 showToast("変更された項目はありません", "info");
@@ -2250,7 +2363,9 @@
 
             currentUser.name = newName;
             currentUser.org = newOrg;
-            currentUser.password = newPass;
+            if (newPass) {
+                currentUser.password = await hashPasswordForUser(currentUser.id, newPass);
+            }
 
             recordAccountChangeLog(
                 newName,
@@ -2267,7 +2382,7 @@
         }
 
         // 管理者専用：新規アカウント発行（スプレッドシートへ追加）
-        function adminCreateNewAccount() {
+        async function adminCreateNewAccount() {
             if (!isCurrentUserAdmin() || !currentUser) return;
             const name = document.getElementById('admin-new-user-name').value.trim();
             const org = document.getElementById('admin-new-user-org').value;
@@ -2296,7 +2411,7 @@
                 isAdmin: 0,
                 deviceHash: "",
                 createdAt: nowStr,
-                password,
+                password: await hashPasswordForUser(newId, password),
                 lastLogin: ""
             };
 
@@ -2347,7 +2462,7 @@
                             </div>
                         </div>
                         <div class="text-[10px] text-stone-500 font-mono flex flex-wrap gap-x-3 gap-y-0.5">
-                            <span>PW: <strong class="text-stone-700">${escapeHtml(u.password || '未設定')}</strong></span>
+                            <span>PW: <strong class="text-stone-700">${isHashedPassword(u.password) ? '設定済み（保護のため非表示）' : escapeHtml(u.password || '未設定')}</strong></span>
                             <span>登録: ${escapeHtml(u.createdAt || '-')}</span>
                             <span>最終ログイン: ${escapeHtml(u.lastLogin || '-')}</span>
                         </div>
@@ -2367,7 +2482,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-stone-600 mb-0.5">パスワード（英数字10桁）</label>
-                                    <input type="text" id="edit-u-pass-${escapeHtml(u.id)}" maxlength="10" value="${escapeHtml(u.password || '')}" class="w-full p-1.5 bg-white border border-stone-300 rounded text-xs font-mono">
+                                    <input type="text" id="edit-u-pass-${escapeHtml(u.id)}" maxlength="10" value="${isHashedPassword(u.password) ? '' : escapeHtml(u.password || '')}" placeholder="${isHashedPassword(u.password) ? '変更する場合のみ入力' : ''}" class="w-full p-1.5 bg-white border border-stone-300 rounded text-xs font-mono">
                                 </div>
                             </div>
                             <div class="flex justify-end gap-1.5">
@@ -2386,7 +2501,7 @@
             if (form) form.classList.toggle('hidden');
         }
 
-        function saveEditedUserRow(userId) {
+        async function saveEditedUserRow(userId) {
             if (!isCurrentUserAdmin() || !currentUser) return;
             const target = usersDatabase.find(u => u.id === userId);
             if (!target) return;
@@ -2407,7 +2522,7 @@
             const changes = [];
             if (target.name !== newName) changes.push(`名前: ${target.name} → ${newName}`);
             if (target.org !== newOrg) changes.push(`所属: ${target.org} → ${newOrg}`);
-            if ((target.password || '') !== newPass) changes.push(`パスワード変更`);
+            if (newPass && (target.password || '') !== newPass) changes.push(`パスワード変更`);
 
             if (changes.length === 0) {
                 toggleEditUserRow(userId);
@@ -2416,7 +2531,9 @@
 
             target.name = newName;
             target.org = newOrg;
-            target.password = newPass;
+            if (newPass && (target.password || '') !== newPass) {
+                target.password = await hashPasswordForUser(target.id, newPass);
+            }
 
             const actorNameAfter = (currentUser.id === target.id) ? newName : currentUser.name;
             recordAccountChangeLog(
@@ -2669,21 +2786,30 @@
         let areaData = loadSavedAreaData();
 
         function loadSavedAreaData() {
+            const backupMap = loadAreaPhotoUrlBackup();
             try {
                 const raw = localStorage.getItem('mizuhodai_area_data_v4');
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
                         Object.keys(parsed).forEach(k => {
-                            if (Array.isArray(parsed[k].images)) {
-                                parsed[k].images = parsed[k].images.map(getSafeDriveImageUrl).filter(Boolean);
-                            }
+                            const imgs = Array.isArray(parsed[k].images) ? parsed[k].images.map(getSafeDriveImageUrl).filter(Boolean) : [];
+                            const bImgs = Array.isArray(backupMap[k]) ? backupMap[k].map(getSafeDriveImageUrl).filter(Boolean) : [];
+                            bImgs.forEach(u => {
+                                if (imgs.length < 9 && !imgs.includes(u)) imgs.push(u);
+                            });
+                            parsed[k].images = imgs;
                         });
                         return parsed;
                     }
                 }
             } catch (e) {}
-            return JSON.parse(JSON.stringify(defaultAreaData));
+            const fresh = JSON.parse(JSON.stringify(defaultAreaData));
+            Object.keys(fresh).forEach(k => {
+                const bImgs = Array.isArray(backupMap[k]) ? backupMap[k].map(getSafeDriveImageUrl).filter(Boolean) : [];
+                fresh[k].images = bImgs;
+            });
+            return fresh;
         }
 
         function persistAreaData() {
@@ -3515,7 +3641,12 @@
             const area = areaData[currentSelectedAreaId];
             const areaId = currentSelectedAreaId;
             showConfirmDialog("写真の削除確認", "この現場写真を削除しますか？", () => {
-                area.images.splice(index, 1);
+                const removed = area.images.splice(index, 1)[0];
+                if (removed && String(removed).startsWith('http') && !deletedPhotoUrls.includes(removed)) {
+                    deletedPhotoUrls.push(removed);
+                    saveJsonArrayStorage('mizuhodai_deleted_photo_urls', deletedPhotoUrls);
+                }
+                saveAreaPhotoUrlBackup();
                 markUnsaved();
                 renderAreaPhotoAlbum(area);
                 syncAreaToCloud(areaId);
@@ -3996,6 +4127,7 @@
         }
 
         function renderEquipmentSelector() {
+            try { refreshConstCatalogSelect(); } catch (e) {}
             const container = document.getElementById('const-equipment-selector');
             if (!container) return;
 
@@ -4109,6 +4241,7 @@
                                         <span class="font-bold text-stone-700">${rec.date}</span>
                                         <span class="font-bold text-stone-800">${escapeHtml(rec.author || '')}</span>
                                         ${getOrgBadgeHtml(rec.org)}
+                                        ${getAssigneeBadgeHtml(rec.date)}
                                     </div>
                                     <span class="font-mono bg-stone-100 px-2 py-0.5 rounded border border-stone-200">${escapeHtml(rec.code)}</span>
                                 </div>
@@ -4697,6 +4830,316 @@
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
         }
+    </script>
+<!-- Ver1.6: カタログ編集モーダル -->
+    <div id="catalog-editor-modal" class="hidden fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+        <div class="bg-[#fdfbf7] w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-xl sm:rounded-xl border border-stone-300 shadow-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-stone-800 flex items-center gap-2"><i class="fa-solid fa-book-open text-[#8c672a]"></i><span id="catalog-editor-title">カタログパターン</span></h3>
+                <button type="button" onclick="closeCatalogEditor()" class="text-stone-400 hover:text-stone-600 text-lg px-2">&times;</button>
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-xs font-bold text-stone-700">パターン名 *</label>
+                <input type="text" id="catalog-name" class="w-full p-2 bg-white border border-stone-300 rounded text-sm" placeholder="例: みずほ台専用祭壇 Aタイプ">
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-xs font-bold text-stone-700">メモ</label>
+                <textarea id="catalog-memo" rows="2" class="w-full p-2 bg-white border border-stone-300 rounded text-sm" placeholder="色味・注意点など"></textarea>
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-xs font-bold text-stone-700">このパターンで使う什器</label>
+                <div id="catalog-eq-selector" class="space-y-2"></div>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button type="button" onclick="saveCatalogPattern()" class="flex-1 py-2.5 bg-[#8c672a] hover:bg-[#75551f] text-white rounded font-bold text-sm transition">保存する</button>
+                <button type="button" onclick="closeCatalogEditor()" class="px-4 py-2.5 bg-white border border-stone-300 rounded font-bold text-sm text-stone-600">閉じる</button>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="backup-import-input" accept="application/json,.json" class="hidden" onchange="importBackupJson(this)">
+
+    <script>
+    // ===== Ver 1.6 追加モジュール（担当月表示／共同カタログ／バックアップ／パスワードハッシュ化） =====
+    function getAssigneeFor(y, m) {
+        if (y <= 2026) return { org: 'FI', label: 'フローリスト石原' };
+        return (m % 2 === 1) ? { org: 'YK', label: 'ユー花園' } : { org: 'FI', label: 'フローリスト石原' };
+    }
+    function getAssigneeBadgeHtml(dateStr) {
+        try {
+            if (!dateStr) return '';
+            const d = new Date(String(dateStr).slice(0, 10) + 'T00:00:00');
+            if (isNaN(d.getTime())) return '';
+            const a = getAssigneeFor(d.getFullYear(), d.getMonth() + 1);
+            const cls = a.org === 'YK' ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-sky-100 text-sky-900 border-sky-300';
+            return `<span class="px-2 py-0.5 border ${cls} text-[10px] font-bold rounded">担当: ${a.label}</span>`;
+        } catch (e) { return ''; }
+    }
+    function renderAssigneeBanner() {
+        const cur = document.getElementById('assignee-current');
+        if (!cur) return;
+        const now = new Date();
+        const a = getAssigneeFor(now.getFullYear(), now.getMonth() + 1);
+        cur.innerHTML = `今月（${now.getFullYear()}年${now.getMonth() + 1}月）の担当: <strong>${a.label}</strong>`;
+        const nm = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const na = getAssigneeFor(nm.getFullYear(), nm.getMonth() + 1);
+        const nxt = document.getElementById('assignee-next');
+        if (nxt) nxt.textContent = `来月（${nm.getMonth() + 1}月）: ${na.label}`;
+        const tbl = document.getElementById('assignee-year-table');
+        if (tbl && !tbl.dataset.done) {
+            tbl.dataset.done = '1';
+            let s = '';
+            for (let m = 1; m <= 12; m++) {
+                const aa = getAssigneeFor(2027, m);
+                s += `<div class="px-2 py-1 rounded border ${aa.org === 'YK' ? 'bg-emerald-50 border-emerald-200' : 'bg-sky-50 border-sky-200'}">2027年${m}月: <strong>${aa.label}</strong></div>`;
+            }
+            tbl.innerHTML = s;
+        }
+    }
+
+    // ---- パスワードのハッシュ化（保存用） ----
+    function isHashedPassword(v) { return typeof v === 'string' && (v.startsWith('s256:') || v.startsWith('w1:')); }
+    async function sha256Hex(text) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    function weakHashHex(text) {
+        let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+        for (let i = 0; i < text.length; i++) {
+            const ch = text.charCodeAt(i);
+            h1 = Math.imul(h1 ^ ch, 2654435761);
+            h2 = Math.imul(h2 ^ ch, 1597334677);
+        }
+        h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+        h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+        return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+    }
+    async function hashPasswordForUser(userId, plain) {
+        const salted = String(userId || '') + '::' + String(plain || '');
+        if (window.crypto && crypto.subtle) {
+            try { return 's256:' + await sha256Hex(salted); } catch (e) {}
+        }
+        return 'w1:' + weakHashHex(salted) + weakHashHex(salted.split('').reverse().join(''));
+    }
+    async function verifyPassword(user, plain) {
+        const stored = (user && user.password) || '';
+        if (!stored) return false;
+        if (isHashedPassword(stored)) {
+            return (await hashPasswordForUser(user.id, plain)) === stored;
+        }
+        return stored === String(plain || '');
+    }
+
+    // ---- 共同カタログ（祭壇パターン） ----
+    let catalogPatterns = [];
+    let editingCatalogId = null;
+    function loadCatalog() {
+        try {
+            const r = localStorage.getItem('mizuhodai_catalog_v1');
+            if (r) { const p = JSON.parse(r); if (Array.isArray(p)) catalogPatterns = p; }
+        } catch (e) {}
+    }
+    function persistCatalog() {
+        try { localStorage.setItem('mizuhodai_catalog_v1', JSON.stringify(catalogPatterns)); } catch (e) {}
+    }
+    function syncCatalogPattern(pat) {
+        try { postActionToGas({ action: 'upsertCatalog', catalog: pat }); } catch (e) {}
+    }
+    function equipmentNameByCode(code) {
+        try {
+            const f = equipmentData.find(e => e.code === code);
+            return f ? `${f.name}${f.unitLabel ? ' ' + f.unitLabel : ''}` : code;
+        } catch (e) { return code; }
+    }
+    function renderCatalogSection() {
+        const box = document.getElementById('catalog-list');
+        if (!box) return;
+        if (!catalogPatterns.length) {
+            box.innerHTML = '<p class="text-xs text-stone-400">まだパターンが登録されていません。「パターンを追加」から、祭壇の構成（使う什器のセット）を登録してください。</p>';
+            return;
+        }
+        box.innerHTML = catalogPatterns.map(pat => `
+            <div class="p-3 bg-stone-50 border border-stone-200 rounded">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="font-bold text-sm text-stone-800">${escapeHtml(pat.name)}</span>
+                    <div class="flex gap-1.5">
+                        <button type="button" onclick="useCatalogPattern('${pat.id}')" class="px-2.5 py-1 bg-[#8c672a] text-white rounded text-[11px] font-bold">この内容で施工記録を作成</button>
+                        <button type="button" onclick="openCatalogEditor('${pat.id}')" class="px-2.5 py-1 bg-white border border-stone-300 rounded text-[11px] font-bold text-stone-600">編集</button>
+                        <button type="button" onclick="deleteCatalogPattern('${pat.id}')" class="px-2.5 py-1 bg-white border border-red-200 rounded text-[11px] font-bold text-red-600">削除</button>
+                    </div>
+                </div>
+                ${pat.memo ? `<p class="text-[11px] text-stone-500 mt-1">${escapeHtml(pat.memo)}</p>` : ''}
+                <div class="flex flex-wrap gap-1.5 mt-2">${(pat.codes || []).map(c => `<span class="px-2 py-0.5 bg-amber-100/80 text-amber-900 border border-amber-300/80 font-mono text-[11px] font-bold rounded">${escapeHtml(c)} (${escapeHtml(equipmentNameByCode(c))})</span>`).join(' ') || '<span class="text-[11px] text-stone-400">什器未設定</span>'}</div>
+            </div>`).join('');
+    }
+    function openCatalogEditor(id) {
+        editingCatalogId = id || null;
+        const pat = id ? catalogPatterns.find(p => p.id === id) : null;
+        document.getElementById('catalog-editor-title').textContent = pat ? 'カタログパターンを編集' : 'カタログパターンを追加';
+        document.getElementById('catalog-name').value = pat ? pat.name : '';
+        document.getElementById('catalog-memo').value = pat ? (pat.memo || '') : '';
+        renderCatalogEqSelector(pat ? (pat.codes || []) : []);
+        document.getElementById('catalog-editor-modal').classList.remove('hidden');
+    }
+    function closeCatalogEditor() {
+        document.getElementById('catalog-editor-modal').classList.add('hidden');
+    }
+    function renderCatalogEqSelector(selectedCodes) {
+        const container = document.getElementById('catalog-eq-selector');
+        if (!container) return;
+        const grouped = groupEquipmentByCategory();
+        container.innerHTML = Object.keys(grouped).map(cat => `
+            <div class="bg-white p-2.5 rounded border border-stone-200 space-y-1.5">
+                <div class="text-xs font-bold text-stone-700">${escapeHtml(cat)}</div>
+                <div class="flex flex-wrap gap-1.5 pl-3 border-l-2 border-stone-200">
+                    ${grouped[cat].map(eq => `<label class="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-50 border border-stone-300 rounded text-xs select-none"><input type="checkbox" name="catalog-eq" value="${escapeHtml(eq.code)}" ${selectedCodes.includes(eq.code) ? 'checked' : ''} class="accent-[#8c672a] rounded"><span class="font-mono font-bold text-[#8c672a]">${escapeHtml(eq.code)}</span><span class="text-stone-700">${escapeHtml(eq.name)}</span></label>`).join('')}
+                </div>
+            </div>`).join('');
+    }
+    function saveCatalogPattern() {
+        const name = document.getElementById('catalog-name').value.trim();
+        if (!name) { showToast('パターン名を入力してください', 'error'); return; }
+        const memo = document.getElementById('catalog-memo').value.trim();
+        const codes = Array.from(document.querySelectorAll('input[name="catalog-eq"]:checked')).map(cb => cb.value);
+        if (editingCatalogId) {
+            const pat = catalogPatterns.find(p => p.id === editingCatalogId);
+            if (pat) { pat.name = name; pat.memo = memo; pat.codes = codes; pat.updatedAt = new Date().toISOString(); syncCatalogPattern(pat); }
+        } else {
+            const pat = { id: 'cat_' + Date.now(), name, memo, codes, updatedAt: new Date().toISOString() };
+            catalogPatterns.push(pat);
+            syncCatalogPattern(pat);
+        }
+        persistCatalog();
+        renderCatalogSection();
+        refreshConstCatalogSelect();
+        closeCatalogEditor();
+        showToast('カタログパターンを保存しました', 'success');
+    }
+    function deleteCatalogPattern(id) {
+        if (!confirm('このカタログパターンを削除しますか？')) return;
+        catalogPatterns = catalogPatterns.filter(p => p.id !== id);
+        try { postActionToGas({ action: 'deleteCatalog', catalogId: id }); } catch (e) {}
+        persistCatalog();
+        renderCatalogSection();
+        refreshConstCatalogSelect();
+    }
+    function useCatalogPattern(id) {
+        openNewConstructionModal();
+        setTimeout(() => {
+            const sel = document.getElementById('const-catalog-select');
+            if (sel) { sel.value = id; applySelectedCatalogPattern(); }
+        }, 80);
+    }
+    function refreshConstCatalogSelect() {
+        const sel = document.getElementById('const-catalog-select');
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">（カタログを使わない）</option>' + catalogPatterns.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+        if (cur) sel.value = cur;
+    }
+    function applySelectedCatalogPattern() {
+        const sel = document.getElementById('const-catalog-select');
+        if (!sel || !sel.value) { showToast('カタログパターンを選んでください', 'error'); return; }
+        const pat = catalogPatterns.find(p => p.id === sel.value);
+        if (!pat) return;
+        let applied = 0;
+        document.querySelectorAll('input[name="used-eq"]').forEach(cb => {
+            if ((pat.codes || []).includes(cb.value)) { cb.checked = true; applied++; }
+        });
+        showToast(`「${pat.name}」の什器 ${applied} 件をセットしました`, 'success');
+    }
+    async function fetchCatalogFromCloud() {
+        try {
+            if (!gasWebhookUrl || !navigator.onLine) return;
+            const res = await fetch(gasWebhookUrl);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data && Array.isArray(data.catalog) && data.catalog.length) {
+                const map = new Map(catalogPatterns.map(p => [p.id, p]));
+                data.catalog.forEach(rp => {
+                    if (rp && rp.id) map.set(String(rp.id), { id: String(rp.id), name: String(rp.name || ''), memo: String(rp.memo || ''), codes: Array.isArray(rp.codes) ? rp.codes.map(String) : [], updatedAt: rp.updatedAt || '' });
+                });
+                catalogPatterns = [...map.values()];
+                persistCatalog();
+                renderCatalogSection();
+                refreshConstCatalogSelect();
+            }
+        } catch (e) {}
+    }
+
+    // ---- バックアップ（書き出し／復元） ----
+    function exportBackupJson() {
+        try {
+            const data = {
+                app: 'mizuhodai-joint-tool',
+                backupVersion: 1,
+                exportedAt: new Date().toISOString(),
+                users: usersDatabase,
+                areas: areaData,
+                constructions: constructionRecords,
+                equipment: equipmentData,
+                catalog: catalogPatterns,
+                accountLogs: (typeof accountChangeLogs !== 'undefined' ? accountChangeLogs : [])
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const dt = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `mizuhodai-backup-${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}-${pad(dt.getHours())}${pad(dt.getMinutes())}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+            showToast('バックアップファイルを書き出しました', 'success');
+        } catch (e) {
+            showToast('バックアップの書き出しに失敗しました', 'error');
+        }
+    }
+    function importBackupJson(input) {
+        const file = input.files && input.files[0];
+        input.value = '';
+        if (!file) return;
+        if (!isCurrentUserAdmin()) { showToast('復元は管理者のみ行えます', 'error'); return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(reader.result);
+                if (!data || data.app !== 'mizuhodai-joint-tool') { showToast('このツールのバックアップファイルではないようです', 'error'); return; }
+                if (!confirm(`バックアップ（${data.exportedAt || '日時不明'}）から復元します。現在のこの端末のデータは上書きされます。よろしいですか？`)) return;
+                if (Array.isArray(data.users)) usersDatabase = data.users;
+                if (data.areas && typeof data.areas === 'object') areaData = data.areas;
+                if (Array.isArray(data.constructions)) constructionRecords = data.constructions;
+                if (Array.isArray(data.equipment)) equipmentData = data.equipment;
+                if (Array.isArray(data.catalog)) { catalogPatterns = data.catalog; persistCatalog(); }
+                try { persistAreaData(); } catch (e) {}
+                try { persistLocalAppData(); } catch (e) {}
+                try { localStorage.setItem('mizuhodai_users_db', JSON.stringify(usersDatabase)); } catch (e) {}
+                showToast('復元しました。再読み込みします', 'success');
+                setTimeout(() => location.reload(), 800);
+            } catch (e) {
+                showToast('バックアップファイルを読み込めませんでした', 'error');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // ---- 初期化 ----
+    function initVer16() {
+        try { loadCatalog(); } catch (e) {}
+        try { renderAssigneeBanner(); } catch (e) {}
+        try { renderCatalogSection(); } catch (e) {}
+        setTimeout(() => { try { fetchCatalogFromCloud(); } catch (e) {} }, 4000);
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#tab-equipment')) {
+                setTimeout(() => { try { renderCatalogSection(); } catch (err) {} }, 350);
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initVer16);
+    } else {
+        initVer16();
+    }
     </script>
 </body>
 </html>
