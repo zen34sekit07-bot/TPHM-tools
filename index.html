@@ -1099,6 +1099,18 @@
                 <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.8.1（2026/11/14）</div>
+                            <p class="mt-0.5">・連携GAS v2（カタログ＋編集中ロック）へ接続先を切り替え</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.8（2026/11/14）</div>
+                            <p class="mt-0.5">・施工記録を編集できるようにしました<br>・権限ルールを全体に統一：管理者は全ての編集/削除＋ロックが可能。一般の方は自分の投稿だけ編集/削除でき、管理者にロックされたものは編集できません<br>・編集中ロック：誰かが編集中のものは「○○さんが編集中」と表示され、他の人は編集を始められません（連携GASの更新後に有効）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.7.2（2026/11/14）</div>
+                            <p class="mt-0.5">・施工日の表記ゆらぎ（GMT表記など）を自動で解釈して日本式表示に統一<br>・アプリに戻った瞬間とタブ切替のタイミングでも自動更新するように（30秒ごとの定期更新はそのまま）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.7.1（2026/11/14）</div>
                             <p class="mt-0.5">・カレンダーの見た目を調整: 担当表示を年月と分けて1行バーに／日付と六曜を2段に分けて折り返さないように</p>
                         </div>
@@ -3821,7 +3833,7 @@
         }
 
         function editAreaCommentByAdmin(commentId) {
-            if (!isCurrentUserAdmin()) return;
+            if (!isCurrentUserAdmin() && !v18CommentCanModify(commentId)) return;
             const box = document.getElementById(`comment-edit-box-${commentId}`);
             if (box) box.classList.remove('hidden');
         }
@@ -3832,13 +3844,14 @@
         }
 
         function saveEditAreaComment(commentId) {
-            if (!isCurrentUserAdmin() || !currentSelectedAreaId) return;
+            if (!currentSelectedAreaId) return;
             const area = areaData[currentSelectedAreaId];
             const target = area.comments.find(c => c.id === commentId);
             const input = document.getElementById(`comment-edit-input-${commentId}`);
             if (!target || !input) return;
             const newText = input.value.trim();
             if (!newText) return;
+            if (!v18CanModify(target)) { showToast("編集できるのは投稿者と管理者だけです", "error"); return; }
             target.text = newText;
             syncUpdateCommentToCloud(currentSelectedAreaId, target);
             markUnsaved();
@@ -3847,9 +3860,11 @@
         }
 
         function deleteAreaCommentByAdmin(commentId) {
-            if (!isCurrentUserAdmin() || !currentSelectedAreaId) return;
+            if (!currentSelectedAreaId) return;
             const area = areaData[currentSelectedAreaId];
-            showConfirmDialog("コメントの削除確認", "このコメントを削除しますか？（管理者操作）", () => {
+            const targetComment = area.comments.find(c => c.id === commentId);
+            if (!targetComment || !v18CanModify(targetComment)) { showToast("削除できるのは投稿者と管理者だけです", "error"); return; }
+            showConfirmDialog("コメントの削除確認", "このコメントを削除しますか？", () => {
                 area.comments = area.comments.filter(c => c.id !== commentId);
                 syncDeleteCommentToCloud(currentSelectedAreaId, commentId);
                 markUnsaved();
@@ -4281,8 +4296,9 @@
         }
 
         function deleteConstructionRecord(recId) {
-            if (!isCurrentUserAdmin()) return;
-            showConfirmDialog("施工記録の削除確認", "この施工記録を削除しますか？（管理者操作）", () => {
+            const targetRec = constructionRecords.find(r => r.id === recId);
+            if (!targetRec || !v18CanModify(targetRec)) { showToast("削除できるのは投稿者と管理者だけです", "error"); return; }
+            showConfirmDialog("施工記録の削除確認", "この施工記録を削除しますか？", () => {
                 constructionRecords = constructionRecords.filter(r => r.id !== recId);
                 syncDeleteConstructionToCloud(recId);
                 markUnsaved();
@@ -4615,6 +4631,10 @@
                 showToast("この什器データは管理者によりロックされています", "error");
                 return;
             }
+            if (!v18CanModifyEquipment(eq)) {
+                showToast("編集できるのは登録者と管理者だけです", "error");
+                return;
+            }
 
             pushNavState('modal:equipment');
             document.getElementById('eq-modal-title').textContent = `什器編集・履歴 (${eq.category} └ ${eq.name})`;
@@ -4728,6 +4748,10 @@
                 const eq = equipmentData.find(item => item.id === id);
                 if (eq.locked && !isCurrentUserAdmin()) {
                     showToast("この什器は管理者によりロックされています", "error");
+                    return;
+                }
+                if (!v18CanModifyEquipment(eq)) {
+                    showToast("編集できるのは登録者と管理者だけです", "error");
                     return;
                 }
                 const changes = [];
@@ -4873,7 +4897,7 @@
     <script>
     // ===== Ver 1.6 追加モジュール（担当月表示／共同カタログ／バックアップ／パスワードハッシュ化） =====
     // 共同カタログ専用GAS（カタログ同期先）
-    const CATALOG_GAS_URL = 'https://script.google.com/macros/s/AKfycbwKErDSA25AcXFIyh0YvYKQHZ0yI8pEM9Geix44P0py00Rmcn2f8Hf98svQfxdWeqex/exec';
+    const CATALOG_GAS_URL = 'https://script.google.com/macros/s/AKfycbzuspSI85lXfcuzDcJh2s3-1IDBYSrFwZOL5oA5dZgb01Hjwndoon5L4Jugl9-hPKkN/exec';
     async function postCatalogToGas(payloadObj) {
         if (!CATALOG_GAS_URL) {
             try { return await postActionToGas(payloadObj); } catch (e) { return null; }
@@ -4985,13 +5009,42 @@
         } catch (e) { return ''; }
     }
     // 'YYYY-MM-DD' → '2026年11月18日（水）・先勝'
+    // 日付のゆらぎ対策: 'YYYY-MM-DD' / ISO形式 / 'Sat Nov 14 2026 ...' のような表記をすべて解釈する
+    function parseDateParts(str) {
+        if (!str) return null;
+        const s = String(str);
+        let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (m) return { y: Number(m[1]), mo: Number(m[2]), d: Number(m[3]) };
+        m = s.match(/^(\d{4})[\/](\d{1,2})[\/](\d{1,2})/);
+        if (m) return { y: Number(m[1]), mo: Number(m[2]), d: Number(m[3]) };
+        const dt = new Date(s);
+        if (!isNaN(dt.getTime())) {
+            const jst = new Date(dt.getTime() + 9 * 60 * 60 * 1000);
+            return { y: jst.getUTCFullYear(), mo: jst.getUTCMonth() + 1, d: jst.getUTCDate() };
+        }
+        m = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m) return { y: Number(m[1]), mo: Number(m[2]), d: Number(m[3]) };
+        return null;
+    }
+    function normalizeDateStr(str) {
+        const p = parseDateParts(str);
+        if (!p) return str || '';
+        return p.y + '-' + String(p.mo).padStart(2, '0') + '-' + String(p.d).padStart(2, '0');
+    }
+    function normalizeConstructionDates() {
+        let changed = false;
+        constructionRecords.forEach(r => {
+            const n = normalizeDateStr(r.date);
+            if (n && n !== r.date) { r.date = n; changed = true; }
+        });
+        return changed;
+    }
     function formatJapaneseDate(dateStr) {
-        const m = String(dateStr || '').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-        if (!m) return dateStr || '';
-        const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
-        const wd = WEEKDAYS_JA[new Date(y, mo - 1, d).getDay()];
-        const rk = getRokuyo(y, mo, d);
-        return y + '年' + mo + '月' + d + '日（' + wd + '）' + (rk ? '・' + rk : '');
+        const p = parseDateParts(dateStr);
+        if (!p) return dateStr || '';
+        const wd = WEEKDAYS_JA[new Date(p.y, p.mo - 1, p.d).getDay()];
+        const rk = getRokuyo(p.y, p.mo, p.d);
+        return p.y + '年' + p.mo + '月' + p.d + '日（' + wd + '）' + (rk ? '・' + rk : '');
     }
     // 'YYYY/MM/DD HH:mm' 等 → '2026年11月14日（土） 10:47'
     function formatJapaneseDateTime(str) {
@@ -5013,11 +5066,11 @@
     function v17FilteredRecords() {
         const kw = v17State.keyword.trim().toLowerCase();
         return constructionRecords.filter(rec => {
-            if (v17State.month && !String(rec.date || '').startsWith(v17State.month)) return false;
+            if (v17State.month && !normalizeDateStr(rec.date).startsWith(v17State.month)) return false;
             if (v17State.org !== 'ALL') {
-                const dm = String(rec.date || '').match(/^(\d{4})-(\d{1,2})/);
-                if (!dm) return false;
-                if (getAssigneeFor(Number(dm[1]), Number(dm[2])).org !== v17State.org) return false;
+                const dp = parseDateParts(rec.date);
+                if (!dp) return false;
+                if (getAssigneeFor(dp.y, dp.mo).org !== v17State.org) return false;
             }
             if (kw) {
                 const eqText = (rec.equipmentIds || []).map(code => {
@@ -5033,7 +5086,7 @@
 
     function v17MonthOptions() {
         const set = new Set();
-        constructionRecords.forEach(r => { if (r.date) set.add(String(r.date).slice(0, 7)); });
+        constructionRecords.forEach(r => { const nd = normalizeDateStr(r.date); if (nd && nd.length >= 7) set.add(nd.slice(0, 7)); });
         const now = new Date();
         set.add(now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'));
         return Array.from(set).sort().reverse();
@@ -5166,7 +5219,7 @@
         if (asg) asg.innerHTML = '<div class="text-center text-xs font-bold rounded py-1.5 ' + (a.org === 'YK' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-sky-50 text-sky-800 border border-sky-200') + '">この月の担当: ' + a.label + '</div>';
         const filtered = v17FilteredRecords();
         const byDay = {};
-        filtered.forEach(r => { (byDay[r.date] = byDay[r.date] || []).push(r); });
+        filtered.forEach(r => { const nd = normalizeDateStr(r.date); (byDay[nd] = byDay[nd] || []).push(r); });
         const first = new Date(y, m - 1, 1);
         const startDow = first.getDay();
         const daysInMonth = new Date(y, m, 0).getDate();
@@ -5203,7 +5256,7 @@
         const box = document.getElementById('v17-day-detail');
         if (!box) return;
         if (!v17State.selectedDay) { box.innerHTML = ''; return; }
-        const recs = v17FilteredRecords().filter(r => r.date === v17State.selectedDay);
+        const recs = v17FilteredRecords().filter(r => normalizeDateStr(r.date) === v17State.selectedDay);
         if (!recs.length) {
             box.innerHTML = `<div class="bg-white border border-stone-200 rounded-md p-3 text-xs text-stone-500">${escapeHtml(formatJapaneseDate(v17State.selectedDay))} の施工記録はありません。</div>`;
             return;
@@ -5229,7 +5282,7 @@
     }
     function v17UsageHistoryHtml(code) {
         const recs = constructionRecords.filter(r => (r.equipmentIds || []).includes(code))
-            .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+            .slice().sort((a, b) => normalizeDateStr(b.date).localeCompare(normalizeDateStr(a.date)));
         const hid = 'usage-' + code.replace(/[^a-zA-Z0-9_-]/g, '_');
         if (!recs.length) {
             return `<div class="mt-2 text-[11px] text-stone-400">使用履歴: まだ施工記録で使われていません。</div>`;
@@ -5267,6 +5320,7 @@
         if (typeof renderConstructionList === 'function') {
             const orig = renderConstructionList;
             renderConstructionList = function () {
+                try { normalizeConstructionDates(); } catch (e) {}
                 const real = constructionRecords;
                 constructionRecords = v17FilteredRecords();
                 try { orig(); } finally { constructionRecords = real; }
@@ -5283,6 +5337,296 @@
         }
         v17UpdateCount();
     })();
+
+    // ===== Ver 1.7.2 クラウド取得時の日付そろえ＋「戻った瞬間・切替時」の自動更新 =====
+    if (typeof fetchUsersFromDriveSheet === 'function') {
+        const origFetchAll = fetchUsersFromDriveSheet;
+        fetchUsersFromDriveSheet = async function () {
+            const r = await origFetchAll.apply(this, arguments);
+            try {
+                if (normalizeConstructionDates()) {
+                    try { persistLocalAppData(); } catch (e) {}
+                    try { renderConstructionList(); } catch (e) {}
+                }
+            } catch (e) {}
+            return r;
+        };
+    }
+    try { normalizeConstructionDates(); } catch (e) {}
+    let v172LastRefresh = 0;
+    function v172Refresh() {
+        const now = Date.now();
+        if (now - v172LastRefresh < 8000) return;
+        if (!navigator.onLine) return;
+        let loggedIn = false;
+        try { loggedIn = !!currentUser; } catch (e) { loggedIn = false; }
+        if (!loggedIn) return;
+        if (typeof fetchUsersFromDriveSheet !== 'function') return;
+        v172LastRefresh = now;
+        try { fetchUsersFromDriveSheet(true); } catch (e) {}
+        try { fetchCatalogFromCloud(); } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) v172Refresh(); });
+    window.addEventListener('focus', v172Refresh);
+    if (typeof switchTab === 'function') {
+        const origSwitchTab = switchTab;
+        switchTab = function () { const r = origSwitchTab.apply(this, arguments); v172Refresh(); return r; };
+    }
+
+    // ===== Ver 1.8 権限（管理者／投稿者）と編集中ロック =====
+    window.V18 = window.V18 || { claims: [], myClaim: null, heartbeatTimer: null };
+    function v18CanModify(item) {
+        if (!currentUser || !item) return false;
+        if (isCurrentUserAdmin()) return true;
+        if (item.locked) return false;
+        return !!item.userId && item.userId === currentUser.id;
+    }
+    function v18EquipmentOwnerId(eq) {
+        if (!eq) return '';
+        if (eq.userId) return eq.userId;
+        const logs = eq.logs || [];
+        for (let i = logs.length - 1; i >= 0; i--) { if (logs[i] && logs[i].userId) return logs[i].userId; }
+        return '';
+    }
+    function v18CanModifyEquipment(eq) {
+        if (!currentUser || !eq) return false;
+        if (isCurrentUserAdmin()) return true;
+        if (eq.locked) return false;
+        const owner = v18EquipmentOwnerId(eq);
+        return !!owner && owner === currentUser.id;
+    }
+    function v18FindComment(commentId) {
+        try {
+            for (const aid of Object.keys(areaData || {})) {
+                const c = ((areaData[aid] || {}).comments || []).find(x => x.id === commentId);
+                if (c) return c;
+            }
+        } catch (e) {}
+        return null;
+    }
+    function v18CommentCanModify(commentId) {
+        const c = v18FindComment(commentId);
+        return c ? v18CanModify(c) : false;
+    }
+    // --- 編集中ロック（連携GASの edit_locks で共有。未デプロイ時は自動で無効） ---
+    function v18ClaimIsFresh(c) {
+        const t = Date.parse((c && c.heartbeatAt) || '');
+        return !isNaN(t) && (Date.now() - t) < 90000;
+    }
+    function v18GetOtherClaim(type, id) {
+        if (!currentUser) return null;
+        return (window.V18.claims || []).find(c => c.type === type && String(c.targetId) === String(id) && c.userId !== currentUser.id && v18ClaimIsFresh(c)) || null;
+    }
+    function v18EditingBadgeHtml(type, id) {
+        const c = v18GetOtherClaim(type, id);
+        if (!c) return '';
+        return `<span class="px-2 py-0.5 bg-red-100 text-red-800 border border-red-300 text-[10px] font-bold rounded"><i class="fa-solid fa-pen mr-0.5"></i>${escapeHtml(c.userName || '他の人')}さんが編集中</span>`;
+    }
+    async function v18ClaimEdit(type, id) {
+        if (!currentUser) return { ok: false };
+        const lock = { type, targetId: String(id), userId: currentUser.id, userName: currentUser.name, org: currentUser.org };
+        const res = await postCatalogToGas({ action: 'claimEdit', lock });
+        if (res && res.status === 'conflict' && res.holder) return { ok: false, holder: res.holder };
+        window.V18.myClaim = lock;
+        window.V18.claims = (window.V18.claims || []).filter(c => !(c.type === type && String(c.targetId) === String(id)));
+        window.V18.claims.push({ ...lock, heartbeatAt: new Date().toISOString() });
+        if (window.V18.heartbeatTimer) clearInterval(window.V18.heartbeatTimer);
+        window.V18.heartbeatTimer = setInterval(() => { try { postCatalogToGas({ action: 'claimEdit', lock }); } catch (e) {} }, 30000);
+        return { ok: true };
+    }
+    async function v18ReleaseEdit() {
+        const mine = window.V18.myClaim;
+        if (window.V18.heartbeatTimer) { clearInterval(window.V18.heartbeatTimer); window.V18.heartbeatTimer = null; }
+        window.V18.myClaim = null;
+        if (mine) {
+            window.V18.claims = (window.V18.claims || []).filter(c => !(c.type === mine.type && String(c.targetId) === String(mine.targetId) && c.userId === mine.userId));
+            try { await postCatalogToGas({ action: 'releaseEdit', lock: mine }); } catch (e) {}
+        }
+    }
+    async function v18StartEditGuard(type, id) {
+        try { await fetchCatalogFromCloud(); } catch (e) {}
+        const other = v18GetOtherClaim(type, id);
+        if (other) { showToast(`${other.userName || '他の人'}さんが編集中です`, 'error'); return false; }
+        const r = await v18ClaimEdit(type, id);
+        if (!r.ok) { showToast(`${(r.holder && r.holder.userName) || '他の人'}さんが編集中です`, 'error'); return false; }
+        return true;
+    }
+    window.addEventListener('beforeunload', () => {
+        if (window.V18.myClaim && CATALOG_GAS_URL) {
+            try { fetch(CATALOG_GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'releaseEdit', lock: window.V18.myClaim }), keepalive: true }); } catch (e) {}
+        }
+    });
+
+    // --- 施工記録カードへ 編集ボタン/編集中バッジ を付け足す ---
+    function v18DecorateConstructionCards() {
+        const container = document.getElementById('construction-list');
+        if (!container || !currentUser) return;
+        const filtered = v17FilteredRecords();
+        Array.from(container.children).forEach((card, idx) => {
+            const rec = filtered[idx];
+            if (!rec) return;
+            const body = card.children[1] || card;
+            if (!card.querySelector('.v18-editing-badge')) {
+                const badge = v18EditingBadgeHtml('construction', rec.id);
+                if (badge) {
+                    const d = document.createElement('div');
+                    d.className = 'v18-editing-badge mb-1.5';
+                    d.innerHTML = badge;
+                    body.insertBefore(d, body.firstChild);
+                }
+            }
+            if (!v18CanModify(rec) || card.querySelector('.v18-owner-bar')) return;
+            if (isCurrentUserAdmin()) {
+                const delBtn = card.querySelector('button[onclick*="deleteConstructionRecord"]');
+                if (delBtn && !card.querySelector('.v18-edit-btn')) {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'v18-edit-btn px-2 py-0.5 rounded border bg-white text-stone-700 border-stone-300 hover:bg-amber-50 font-bold';
+                    b.textContent = '編集';
+                    b.setAttribute('onclick', `openConstructionEdit('${rec.id}')`);
+                    delBtn.parentNode.insertBefore(b, delBtn);
+                }
+            } else {
+                const bar = document.createElement('div');
+                bar.className = 'v18-owner-bar pt-2 mt-1 border-t border-stone-200 flex flex-wrap items-center justify-end gap-1.5 text-[10px]';
+                bar.innerHTML = `<button type="button" onclick="openConstructionEdit('${rec.id}')" class="px-2 py-0.5 rounded border bg-white text-stone-700 border-stone-300 hover:bg-amber-50 font-bold">編集</button><button type="button" onclick="deleteConstructionRecord('${rec.id}')" class="px-2 py-0.5 rounded border bg-white text-red-700 border-red-200 hover:bg-red-50 font-bold">削除</button>`;
+                body.appendChild(bar);
+            }
+        });
+    }
+    if (typeof renderConstructionList === 'function') {
+        const v17RenderConstructionList = renderConstructionList;
+        renderConstructionList = function () {
+            const r = v17RenderConstructionList.apply(this, arguments);
+            try { v18DecorateConstructionCards(); } catch (e) {}
+            return r;
+        };
+    }
+
+    // --- 施工記録の編集 ---
+    let v18EditingConstructionId = null;
+    function openConstructionEdit(recId) {
+        const rec = constructionRecords.find(r => r.id === recId);
+        if (!rec) return;
+        if (!v18CanModify(rec)) { showToast('編集できるのは投稿者と管理者だけです', 'error'); return; }
+        v18StartEditGuard('construction', recId).then(ok => {
+            if (!ok) return;
+            v18EditingConstructionId = recId;
+            openNewConstructionModal();
+            document.getElementById('const-date').value = normalizeDateStr(rec.date);
+            document.getElementById('const-code').value = (rec.code && rec.code !== 'コード未設定') ? rec.code : '';
+            document.getElementById('const-notes').value = rec.notes || '';
+            renderEquipmentSelector();
+            document.querySelectorAll('input[name="used-eq"]').forEach(cb => { cb.checked = (rec.equipmentIds || []).includes(cb.value); });
+            try { originalImageObj = null; } catch (e) {}
+            const titleSpan = document.querySelector('#construction-modal h3 span');
+            if (titleSpan) titleSpan.textContent = '施工記録の編集';
+            showToast('写真は新しく選び直さなければ、今の写真のままです', 'info');
+        });
+    }
+    if (typeof saveConstructionRecord === 'function') {
+        const origSaveConstruction = saveConstructionRecord;
+        saveConstructionRecord = function () {
+            if (!v18EditingConstructionId) return origSaveConstruction.apply(this, arguments);
+            const rec = constructionRecords.find(r => r.id === v18EditingConstructionId);
+            if (!rec) { v18EditingConstructionId = null; return origSaveConstruction.apply(this, arguments); }
+            const date = document.getElementById('const-date').value;
+            const code = document.getElementById('const-code').value.trim() || 'コード未設定';
+            const notes = document.getElementById('const-notes').value.trim();
+            if (!date || !notes) { showToast('施工日と施工内容を入力してください', 'error'); return; }
+            const selectedEq = Array.from(document.querySelectorAll('input[name="used-eq"]:checked')).map(cb => cb.value);
+            rec.date = date; rec.code = code; rec.notes = notes; rec.equipmentIds = selectedEq;
+            if (originalImageObj) { try { rec.image = mosaicCanvas.toDataURL('image/jpeg', 0.85); } catch (e) {} }
+            try { syncUpdateConstructionToCloud(rec); } catch (e) {}
+            try { markUnsaved(); } catch (e) {}
+            try { persistLocalAppData(); } catch (e) {}
+            v18EditingConstructionId = null;
+            renderConstructionList();
+            closeConstructionModal();
+            v18ReleaseEdit();
+            showToast('施工記録を更新しました', 'success');
+        };
+    }
+    if (typeof closeConstructionModal === 'function') {
+        const origCloseConstruction = closeConstructionModal;
+        closeConstructionModal = function () {
+            const wasEditing = !!v18EditingConstructionId;
+            v18EditingConstructionId = null;
+            const r = origCloseConstruction.apply(this, arguments);
+            const titleSpan = document.querySelector('#construction-modal h3 span');
+            if (titleSpan) titleSpan.textContent = '新規施工記録の登録';
+            if (wasEditing) v18ReleaseEdit();
+            return r;
+        };
+    }
+
+    // --- コメントカードへ所有者の編集/削除ボタンを付け足す ---
+    function v18DecorateCommentCards(comments) {
+        if (!currentUser || isCurrentUserAdmin() || !Array.isArray(comments)) return;
+        comments.forEach(c => {
+            if (!v18CanModify(c)) return;
+            const box = document.getElementById('comment-edit-box-' + c.id);
+            if (!box || !box.parentNode || box.parentNode.querySelector('.v18-comment-actions')) return;
+            const row = document.createElement('div');
+            row.className = 'v18-comment-actions flex gap-1.5 mt-1.5 text-[10px]';
+            row.innerHTML = `<button type="button" onclick="editAreaCommentByAdmin('${c.id}')" class="px-2 py-0.5 rounded border bg-white text-stone-700 border-stone-300 hover:bg-amber-50 font-bold">編集</button><button type="button" onclick="deleteAreaCommentByAdmin('${c.id}')" class="px-2 py-0.5 rounded border bg-white text-red-700 border-red-200 hover:bg-red-50 font-bold">削除</button>`;
+            box.parentNode.insertBefore(row, box);
+        });
+    }
+    if (typeof renderAreaComments === 'function') {
+        const origRenderAreaComments = renderAreaComments;
+        renderAreaComments = function (comments) {
+            const r = origRenderAreaComments.apply(this, arguments);
+            try { v18DecorateCommentCards(comments); } catch (e) {}
+            return r;
+        };
+    }
+    if (typeof openAllAreaCommentsModal === 'function') {
+        const origOpenAllComments = openAllAreaCommentsModal;
+        openAllAreaCommentsModal = function () {
+            const r = origOpenAllComments.apply(this, arguments);
+            try { v18DecorateCommentCards(Object.values(areaData || {}).flatMap(a => a.comments || [])); } catch (e) {}
+            return r;
+        };
+    }
+    if (typeof editAreaCommentByAdmin === 'function') {
+        const origEditAreaComment = editAreaCommentByAdmin;
+        editAreaCommentByAdmin = function (commentId) {
+            const r = origEditAreaComment.apply(this, arguments);
+            const box = document.getElementById('comment-edit-box-' + commentId);
+            if (box && !box.classList.contains('hidden')) {
+                v18StartEditGuard('comment', commentId).then(ok => { if (!ok) box.classList.add('hidden'); });
+            }
+            return r;
+        };
+    }
+    ['saveEditAreaComment', 'cancelEditAreaComment'].forEach(fnName => {
+        if (typeof window[fnName] === 'function') {
+            const orig = window[fnName];
+            window[fnName] = function () { const r = orig.apply(this, arguments); v18ReleaseEdit(); return r; };
+        }
+    });
+
+    // --- 什器編集モーダルとカタログ編集の開閉に編集中ロックを連動 ---
+    if (typeof openEditEquipmentModal === 'function') {
+        const origOpenEqModal = openEditEquipmentModal;
+        openEditEquipmentModal = function (id) {
+            const r = origOpenEqModal.apply(this, arguments);
+            const modal = document.getElementById('equipment-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                v18StartEditGuard('equipment', id).then(ok => { if (!ok) { try { closeEquipmentModal(); } catch (e) {} } });
+            }
+            return r;
+        };
+    }
+    if (typeof closeEquipmentModal === 'function') {
+        const origCloseEqModal = closeEquipmentModal;
+        closeEquipmentModal = function () { const r = origCloseEqModal.apply(this, arguments); v18ReleaseEdit(); return r; };
+    }
+    if (typeof closeCatalogEditor === 'function') {
+        const origCloseCatalog = closeCatalogEditor;
+        closeCatalogEditor = function () { const r = origCloseCatalog.apply(this, arguments); v18ReleaseEdit(); return r; };
+    }
     function getAssigneeFor(y, m) {
         if (y <= 2026) return { org: 'FI', label: 'フローリスト石原' };
         return (m % 2 === 1) ? { org: 'YK', label: 'ユー花園' } : { org: 'FI', label: 'フローリスト石原' };
@@ -5290,9 +5634,9 @@
     function getAssigneeBadgeHtml(dateStr) {
         try {
             if (!dateStr) return '';
-            const d = new Date(String(dateStr).slice(0, 10) + 'T00:00:00');
-            if (isNaN(d.getTime())) return '';
-            const a = getAssigneeFor(d.getFullYear(), d.getMonth() + 1);
+            const p = parseDateParts(dateStr);
+            if (!p) return '';
+            const a = getAssigneeFor(p.y, p.mo);
             const cls = a.org === 'YK' ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-sky-100 text-sky-900 border-sky-300';
             return `<span class="px-2 py-0.5 border ${cls} text-[10px] font-bold rounded">担当: ${a.label}</span>`;
         } catch (e) { return ''; }
@@ -5379,11 +5723,14 @@
         box.innerHTML = catalogPatterns.map(pat => `
             <div class="p-3 bg-stone-50 border border-stone-200 rounded">
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                    <span class="font-bold text-sm text-stone-800">${escapeHtml(pat.name)}</span>
-                    <div class="flex gap-1.5">
+                    <span class="font-bold text-sm text-stone-800">${escapeHtml(pat.name)}${pat.author ? ` <span class="text-[10px] font-normal text-stone-400">登録: ${escapeHtml(pat.author)}</span>` : ''}</span>
+                    <div class="flex gap-1.5 flex-wrap items-center">
+                        ${v18EditingBadgeHtml('catalog', pat.id)}
+                        ${pat.locked ? '<span class="px-2 py-0.5 bg-stone-200 text-stone-600 border border-stone-300 text-[10px] font-bold rounded"><i class="fa-solid fa-lock mr-0.5"></i>ロック中</span>' : ''}
                         <button type="button" onclick="useCatalogPattern('${pat.id}')" class="px-2.5 py-1 bg-[#8c672a] text-white rounded text-[11px] font-bold">この内容で施工記録を作成</button>
-                        <button type="button" onclick="openCatalogEditor('${pat.id}')" class="px-2.5 py-1 bg-white border border-stone-300 rounded text-[11px] font-bold text-stone-600">編集</button>
-                        <button type="button" onclick="deleteCatalogPattern('${pat.id}')" class="px-2.5 py-1 bg-white border border-red-200 rounded text-[11px] font-bold text-red-600">削除</button>
+                        ${v18CanModify(pat) ? `<button type="button" onclick="openCatalogEditor('${pat.id}')" class="px-2.5 py-1 bg-white border border-stone-300 rounded text-[11px] font-bold text-stone-600">編集</button>
+                        <button type="button" onclick="deleteCatalogPattern('${pat.id}')" class="px-2.5 py-1 bg-white border border-red-200 rounded text-[11px] font-bold text-red-600">削除</button>` : ''}
+                        ${isCurrentUserAdmin() ? `<button type="button" onclick="toggleCatalogLock('${pat.id}')" class="px-2.5 py-1 bg-white border border-stone-300 rounded text-[11px] font-bold text-stone-600">${pat.locked ? 'ロック解除' : 'ロック'}</button>` : ''}
                     </div>
                 </div>
                 ${pat.memo ? `<p class="text-[11px] text-stone-500 mt-1">${escapeHtml(pat.memo)}</p>` : ''}
@@ -5391,6 +5738,25 @@
             </div>`).join('');
     }
     function openCatalogEditor(id) {
+        if (id) {
+            const pat = catalogPatterns.find(p => p.id === id);
+            if (pat && !v18CanModify(pat)) { showToast('編集できるのは登録者と管理者だけです', 'error'); return; }
+            v18StartEditGuard('catalog', id).then(ok => { if (ok) v18OpenCatalogEditorInner(id); });
+            return;
+        }
+        v18OpenCatalogEditorInner(null);
+    }
+    function toggleCatalogLock(id) {
+        if (!isCurrentUserAdmin()) return;
+        const pat = catalogPatterns.find(p => p.id === id);
+        if (!pat) return;
+        pat.locked = !pat.locked;
+        persistCatalog();
+        renderCatalogSection();
+        syncCatalogPattern(pat);
+        showToast(pat.locked ? 'パターンをロックしました' : 'ロックを解除しました', 'info');
+    }
+    function v18OpenCatalogEditorInner(id) {
         editingCatalogId = id || null;
         const pat = id ? catalogPatterns.find(p => p.id === id) : null;
         document.getElementById('catalog-editor-title').textContent = pat ? 'カタログパターンを編集' : 'カタログパターンを追加';
@@ -5423,7 +5789,7 @@
             const pat = catalogPatterns.find(p => p.id === editingCatalogId);
             if (pat) { pat.name = name; pat.memo = memo; pat.codes = codes; pat.updatedAt = new Date().toISOString(); syncCatalogPattern(pat); }
         } else {
-            const pat = { id: 'cat_' + Date.now(), name, memo, codes, updatedAt: new Date().toISOString() };
+            const pat = { id: 'cat_' + Date.now(), name, memo, codes, updatedAt: new Date().toISOString(), userId: currentUser ? currentUser.id : '', author: currentUser ? currentUser.name : '', org: currentUser ? currentUser.org : '', locked: false };
             catalogPatterns.push(pat);
             syncCatalogPattern(pat);
         }
@@ -5434,6 +5800,8 @@
         showToast('カタログパターンを保存しました', 'success');
     }
     function deleteCatalogPattern(id) {
+        const pat = catalogPatterns.find(p => p.id === id);
+        if (!pat || !v18CanModify(pat)) { showToast('削除できるのは登録者と管理者だけです', 'error'); return; }
         if (!confirm('このカタログパターンを削除しますか？')) return;
         catalogPatterns = catalogPatterns.filter(p => p.id !== id);
         try { postCatalogToGas({ action: 'deleteCatalog', catalogId: id }); } catch (e) {}
@@ -5476,12 +5844,15 @@
             if (data && Array.isArray(data.catalog) && data.catalog.length) {
                 const map = new Map(catalogPatterns.map(p => [p.id, p]));
                 data.catalog.forEach(rp => {
-                    if (rp && rp.id) map.set(String(rp.id), { id: String(rp.id), name: String(rp.name || ''), memo: String(rp.memo || ''), codes: Array.isArray(rp.codes) ? rp.codes.map(String) : [], updatedAt: rp.updatedAt || '' });
+                    if (rp && rp.id) map.set(String(rp.id), { id: String(rp.id), name: String(rp.name || ''), memo: String(rp.memo || ''), codes: Array.isArray(rp.codes) ? rp.codes.map(String) : [], updatedAt: rp.updatedAt || '', userId: String(rp.userId || ''), author: String(rp.author || ''), org: String(rp.org || ''), locked: !!rp.locked });
                 });
                 catalogPatterns = [...map.values()];
                 persistCatalog();
                 renderCatalogSection();
                 refreshConstCatalogSelect();
+            }
+            if (data && Array.isArray(data.editLocks) && window.V18) {
+                window.V18.claims = data.editLocks;
             }
         } catch (e) {}
     }
