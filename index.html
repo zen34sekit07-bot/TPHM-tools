@@ -1122,6 +1122,10 @@
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 2.7（2026/11/15）</div>
+                            <p class="mt-0.5">・写真エリアから画面スクロールできるよう修正（ペンモード時は縦スワイプでスクロール、モザイクは短いなぞりで操作）<br>・サブ画像のポップアップを、保存して画面が戻った直後に出るよう変更</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.6（2026/11/14）</div>
                             <p class="mt-0.5">・規格の入力例を「花6」に変更<br>・写真未選択のときは写真エリアでも画面スクロールができるようにした<br>・サブ画像を投稿したあとに「画面反映に時間がかかります」のポップアップを表示<br>・サブ画像のアップロード中は左下の「通信中」に進み具合（%）を表示</p>
                         </div>
@@ -4150,11 +4154,11 @@
 
             mosaicCanvas.addEventListener('touchstart', (e) => {
                 window.__lastMosaicTouch = Date.now();
-                e.preventDefault();
+                if (e.touches.length > 1 || !window.__mosaicScrollOk || !window.__mosaicScrollOk()) e.preventDefault();
                 startMosaic(e.touches[0]);
             }, { passive: false });
             mosaicCanvas.addEventListener('touchmove', (e) => {
-                e.preventDefault();
+                if (!window.__mosaicScrollOk || !window.__mosaicScrollOk() || window.__pinching) e.preventDefault();
                 drawMosaic(e.touches[0]);
             }, { passive: false });
             window.addEventListener('touchend', () => { window.__lastMosaicTouch = Date.now(); isDrawingMosaic = false; });
@@ -4184,7 +4188,8 @@
                 mosaicCanvas.height = img.height * scale;
 
                 mosaicCtx.drawImage(img, 0, 0, mosaicCanvas.width, mosaicCanvas.height);
-                mosaicCanvas.style.touchAction = 'none';
+                originalImageObj = img;
+                v27SyncTouchAction();
                 document.getElementById('canvas-placeholder').classList.add('hidden');
             };
             img.src = src;
@@ -5687,6 +5692,7 @@
             if (!v18EditingConstructionId) return origSaveConstruction.apply(this, arguments);
             const rec = constructionRecords.find(r => r.id === v18EditingConstructionId);
             if (!rec) { v18EditingConstructionId = null; return origSaveConstruction.apply(this, arguments); }
+            const v27Notice = window.V21.pendingSubs.some(s => s && s.src && s.src.indexOf('data:') === 0);
             const date = document.getElementById('const-date').value;
             const code = document.getElementById('const-code').value.trim();
             const notes = document.getElementById('const-notes').value.trim();
@@ -5702,6 +5708,7 @@
             v18EditingConstructionId = null;
             renderConstructionList();
             closeConstructionModal();
+            if (v27Notice) v26ShowSubNotice();
             v18ReleaseEdit();
             showToast('施工記録を更新しました', 'success');
         };
@@ -5991,7 +5998,7 @@
         v21RenderSubThumbs();
         rec.subImages = subs;
         v21SaveMeta(rec);
-        if (uploadCount > 0) { v26ProgressStep(); v26ProgressEnd(); v26ShowSubNotice(); }
+        if (uploadCount > 0) { v26ProgressStep(); v26ProgressEnd(); }
         try { renderConstructionList(); } catch (e) {}
     }
     async function v21SyncEditedConstruction(rec) {
@@ -6245,6 +6252,19 @@
         if (ov) { ov.classList.add('hidden'); ov.classList.remove('flex'); }
     }
 
+    // ===== Ver 2.7 写真エリアのスクロール改善 =====
+    window.__mosaicScrollOk = function () {
+        try { return !originalImageObj || window.__mosaicMode === 'pen'; } catch (e) { return true; }
+    };
+    function v27SyncTouchAction() {
+        try { if (mosaicCanvas) mosaicCanvas.style.touchAction = window.__mosaicScrollOk() ? 'pan-y' : 'none'; } catch (e) {}
+    }
+    window.addEventListener('touchcancel', () => { try { isDrawingMosaic = false; } catch (e) {} });
+    if (typeof v21SetMosaicMode === 'function') {
+        const origSetModeV27 = v21SetMosaicMode;
+        v21SetMosaicMode = function () { const r = origSetModeV27.apply(this, arguments); v27SyncTouchAction(); return r; };
+    }
+
     (function initV21() {
         const subInput = document.getElementById('const-sub-image-input');
         if (subInput) {
@@ -6291,6 +6311,7 @@
         saveConstructionRecord = function () {
             const beforeIds = new Set(constructionRecords.map(r => r.id));
             const hadSubs = window.V21.pendingSubs.length > 0;
+            const hadDataSubs = window.V21.pendingSubs.some(s => s && s.src && s.src.indexOf('data:') === 0);
             const r = origSaveV21.apply(this, arguments);
             if (!v18EditingConstructionId) {
                 const created = constructionRecords.find(x => !beforeIds.has(x.id));
@@ -6298,6 +6319,7 @@
                     created.updatedAt = new Date().toISOString();
                     if (hadSubs) v21ProcessSubsAndMeta(created); else v21SaveMeta(created);
                     try { persistLocalAppData(); } catch (e) {}
+                    if (hadDataSubs) v26ShowSubNotice();
                 }
             }
             return r;
@@ -6396,8 +6418,8 @@
                 mosaicCanvas.width = img.width * scale;
                 mosaicCanvas.height = img.height * scale;
                 mosaicCtx.drawImage(img, 0, 0, mosaicCanvas.width, mosaicCanvas.height);
-                mosaicCanvas.style.touchAction = 'none';
                 originalImageObj = img;
+                v27SyncTouchAction();
                 window.__mosaicDirty = false;
                 window.__mosaicHist = { undo: [], redo: [] };
                 v22PaintHistButtons();
