@@ -264,7 +264,7 @@
                             <i class="fa-solid fa-plus mr-1"></i>パターンを追加
                         </button>
                     </div>
-                    <p class="text-[11px] sm:text-xs text-stone-500 leading-relaxed">ホール専用祭壇の構成パターンを登録しておくと、施工記録の作成時に「使用什器」へワンタップで反映できます。データはこの端末に保存され、バックアップ書き出しにも含まれます（クラウド同期はGAS側の対応後に有効になります）。</p>
+                    <p class="text-[11px] sm:text-xs text-stone-500 leading-relaxed">ホール専用祭壇の構成パターンを登録しておくと、施工記録の作成時に「使用什器」へワンタップで反映できます。データは共同カタログ専用GASと自動同期され、他の端末・相手会社とも共有されます（バックアップ書き出しにも含まれます）。</p>
                     <div id="catalog-list" class="space-y-2"></div>
                 </div>
 
@@ -1100,7 +1100,7 @@
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.6（2026/11/14）</div>
-                            <p class="mt-0.5">・今月／来月の施工担当（2026年内はフローリスト石原、2027年以降は奇数月＝ユー花園／偶数月＝フローリスト石原）をトップに表示し、施工記録にも担当バッジを表示<br>・共同カタログ（祭壇パターン）を什器管理に追加。パターンを選ぶと施工記録の使用什器へ自動セット（クラウド同期はGASへの upsertCatalog / deleteCatalog アクション追加で有効化）<br>・設定にバックアップ（JSON書き出し／読み込み）を追加<br>・パスワードをハッシュ化して保存するよう変更（ログイン成功時に自動で移行。管理画面ではパスワードを表示しません）<br>・同一エリアIDの重複データを取り込まないようマージ処理を追加</p>
+                            <p class="mt-0.5">・今月／来月の施工担当（2026年内はフローリスト石原、2027年以降は奇数月＝ユー花園／偶数月＝フローリスト石原）をトップに表示し、施工記録にも担当バッジを表示<br>・共同カタログ（祭壇パターン）を什器管理に追加。パターンを選ぶと施工記録の使用什器へ自動セット（共同カタログ専用GASへ接続済み・自動同期）<br>・設定にバックアップ（JSON書き出し／読み込み）を追加<br>・パスワードをハッシュ化して保存するよう変更（ログイン成功時に自動で移行。管理画面ではパスワードを表示しません）<br>・同一エリアIDの重複データを取り込まないようマージ処理を追加</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.5（2026/11/13）</div>
@@ -4860,6 +4860,24 @@
 
     <script>
     // ===== Ver 1.6 追加モジュール（担当月表示／共同カタログ／バックアップ／パスワードハッシュ化） =====
+    // 共同カタログ専用GAS（カタログ同期先）
+    const CATALOG_GAS_URL = 'https://script.google.com/macros/s/AKfycbwKErDSA25AcXFIyh0YvYKQHZ0yI8pEM9Geix44P0py00Rmcn2f8Hf98svQfxdWeqex/exec';
+    async function postCatalogToGas(payloadObj) {
+        if (!CATALOG_GAS_URL) {
+            try { return await postActionToGas(payloadObj); } catch (e) { return null; }
+        }
+        try {
+            const res = await fetch(CATALOG_GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payloadObj)
+            });
+            if (res && res.ok) {
+                try { return await res.json(); } catch (e) { return { status: 'ok' }; }
+            }
+        } catch (e) {}
+        return null;
+    }
     function getAssigneeFor(y, m) {
         if (y <= 2026) return { org: 'FI', label: 'フローリスト石原' };
         return (m % 2 === 1) ? { org: 'YK', label: 'ユー花園' } : { org: 'FI', label: 'フローリスト石原' };
@@ -4942,7 +4960,7 @@
         try { localStorage.setItem('mizuhodai_catalog_v1', JSON.stringify(catalogPatterns)); } catch (e) {}
     }
     function syncCatalogPattern(pat) {
-        try { postActionToGas({ action: 'upsertCatalog', catalog: pat }); } catch (e) {}
+        try { postCatalogToGas({ action: 'upsertCatalog', catalog: pat }); } catch (e) {}
     }
     function equipmentNameByCode(code) {
         try {
@@ -5017,7 +5035,7 @@
     function deleteCatalogPattern(id) {
         if (!confirm('このカタログパターンを削除しますか？')) return;
         catalogPatterns = catalogPatterns.filter(p => p.id !== id);
-        try { postActionToGas({ action: 'deleteCatalog', catalogId: id }); } catch (e) {}
+        try { postCatalogToGas({ action: 'deleteCatalog', catalogId: id }); } catch (e) {}
         persistCatalog();
         renderCatalogSection();
         refreshConstCatalogSelect();
@@ -5049,8 +5067,9 @@
     }
     async function fetchCatalogFromCloud() {
         try {
-            if (!gasWebhookUrl || !navigator.onLine) return;
-            const res = await fetch(gasWebhookUrl);
+            const catalogEndpoint = CATALOG_GAS_URL || gasWebhookUrl;
+            if (!catalogEndpoint || !navigator.onLine) return;
+            const res = await fetch(catalogEndpoint);
             if (!res.ok) return;
             const data = await res.json();
             if (data && Array.isArray(data.catalog) && data.catalog.length) {
