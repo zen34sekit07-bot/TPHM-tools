@@ -1099,6 +1099,10 @@
                 <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-xs text-stone-700 leading-relaxed">
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 1.8.2（2026/11/14）</div>
+                            <p class="mt-0.5">・編集画面が開くまでの待ち時間を解消（編集中ロックの確認を裏側で行うように変更。競合していた場合だけ自動で閉じます）<br>・通信に時間がかかる時は左下に「通信中…」を表示</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 1.8.1（2026/11/14）</div>
                             <p class="mt-0.5">・連携GAS v2（カタログ＋編集中ロック）へ接続先を切り替え</p>
                         </div>
@@ -5342,7 +5346,9 @@
     if (typeof fetchUsersFromDriveSheet === 'function') {
         const origFetchAll = fetchUsersFromDriveSheet;
         fetchUsersFromDriveSheet = async function () {
-            const r = await origFetchAll.apply(this, arguments);
+            v18NetStart();
+            let r;
+            try { r = await origFetchAll.apply(this, arguments); } finally { v18NetEnd(); }
             try {
                 if (normalizeConstructionDates()) {
                     try { persistLocalAppData(); } catch (e) {}
@@ -5431,7 +5437,14 @@
         window.V18.claims = (window.V18.claims || []).filter(c => !(c.type === type && String(c.targetId) === String(id)));
         window.V18.claims.push({ ...lock, heartbeatAt: new Date().toISOString() });
         if (window.V18.heartbeatTimer) clearInterval(window.V18.heartbeatTimer);
-        window.V18.heartbeatTimer = setInterval(() => { try { postCatalogToGas({ action: 'claimEdit', lock }); } catch (e) {} }, 30000);
+        window.V18.heartbeatTimer = setInterval(() => {
+            window.V18.netSilent = true;
+            try {
+                const p = postCatalogToGas({ action: 'claimEdit', lock });
+                if (p && p.finally) p.finally(() => { window.V18.netSilent = false; });
+                else window.V18.netSilent = false;
+            } catch (e) { window.V18.netSilent = false; }
+        }, 30000);
         return { ok: true };
     }
     async function v18ReleaseEdit() {
@@ -5443,13 +5456,53 @@
             try { await postCatalogToGas({ action: 'releaseEdit', lock: mine }); } catch (e) {}
         }
     }
+    // 編集は即座に開き、編集中ロックの取得は裏側で行う（競合が判明した時だけ閉じる）
+    function v18ClaimBackground(type, id, onConflict) {
+        v18ClaimEdit(type, id).then(r => {
+            if (!r.ok && onConflict) onConflict(r.holder);
+        }).catch(() => {});
+    }
     async function v18StartEditGuard(type, id) {
-        try { await fetchCatalogFromCloud(); } catch (e) {}
         const other = v18GetOtherClaim(type, id);
         if (other) { showToast(`${other.userName || '他の人'}さんが編集中です`, 'error'); return false; }
         const r = await v18ClaimEdit(type, id);
         if (!r.ok) { showToast(`${(r.holder && r.holder.userName) || '他の人'}さんが編集中です`, 'error'); return false; }
         return true;
+    }
+    // --- 通信中インジケーター（0.6秒以上かかる通信だけ表示） ---
+    function v18RenderNetPill() {
+        let pill = document.getElementById('v18-net-pill');
+        if (window.V18.netCount > 0) {
+            if (!pill) {
+                pill = document.createElement('div');
+                pill.id = 'v18-net-pill';
+                pill.className = 'fixed bottom-4 left-4 z-[70] px-3 py-1.5 bg-stone-900/85 text-stone-100 text-[11px] font-bold rounded-full shadow-lg flex items-center gap-1.5';
+                pill.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin"></i>通信中…';
+                document.body.appendChild(pill);
+            }
+        } else if (pill) { pill.remove(); }
+    }
+    function v18NetStart() {
+        if (window.V18.netSilent) return;
+        window.V18.netCount = (window.V18.netCount || 0) + 1;
+        if (window.V18.netTimer) clearTimeout(window.V18.netTimer);
+        window.V18.netTimer = setTimeout(v18RenderNetPill, 600);
+    }
+    function v18NetEnd() {
+        if (window.V18.netSilent) return;
+        window.V18.netCount = Math.max(0, (window.V18.netCount || 0) - 1);
+        if (window.V18.netCount === 0) {
+            if (window.V18.netTimer) clearTimeout(window.V18.netTimer);
+            v18RenderNetPill();
+        }
+    }
+    if (typeof postCatalogToGas === 'function') {
+        const origPostCatalog = postCatalogToGas;
+        postCatalogToGas = async function () { v18NetStart(); try { return await origPostCatalog.apply(this, arguments); } finally { v18NetEnd(); } };
+    }
+    if (typeof fetchCatalogFromCloud === 'function') {
+        const origFetchCatalog = fetchCatalogFromCloud;
+        fetchCatalogFromCloud = async function () { v18NetStart(); try { return await origFetchCatalog.apply(this, arguments); } finally { v18NetEnd(); } };
     }
     window.addEventListener('beforeunload', () => {
         if (window.V18.myClaim && CATALOG_GAS_URL) {
@@ -5509,19 +5562,23 @@
         const rec = constructionRecords.find(r => r.id === recId);
         if (!rec) return;
         if (!v18CanModify(rec)) { showToast('編集できるのは投稿者と管理者だけです', 'error'); return; }
-        v18StartEditGuard('construction', recId).then(ok => {
-            if (!ok) return;
-            v18EditingConstructionId = recId;
-            openNewConstructionModal();
-            document.getElementById('const-date').value = normalizeDateStr(rec.date);
-            document.getElementById('const-code').value = (rec.code && rec.code !== 'コード未設定') ? rec.code : '';
-            document.getElementById('const-notes').value = rec.notes || '';
-            renderEquipmentSelector();
-            document.querySelectorAll('input[name="used-eq"]').forEach(cb => { cb.checked = (rec.equipmentIds || []).includes(cb.value); });
-            try { originalImageObj = null; } catch (e) {}
-            const titleSpan = document.querySelector('#construction-modal h3 span');
-            if (titleSpan) titleSpan.textContent = '施工記録の編集';
-            showToast('写真は新しく選び直さなければ、今の写真のままです', 'info');
+        const cachedClaim = v18GetOtherClaim('construction', recId);
+        if (cachedClaim) { showToast(`${cachedClaim.userName || '他の人'}さんが編集中です`, 'error'); return; }
+        v18EditingConstructionId = recId;
+        openNewConstructionModal();
+        document.getElementById('const-date').value = normalizeDateStr(rec.date);
+        document.getElementById('const-code').value = (rec.code && rec.code !== 'コード未設定') ? rec.code : '';
+        document.getElementById('const-notes').value = rec.notes || '';
+        renderEquipmentSelector();
+        document.querySelectorAll('input[name="used-eq"]').forEach(cb => { cb.checked = (rec.equipmentIds || []).includes(cb.value); });
+        try { originalImageObj = null; } catch (e) {}
+        const titleSpan = document.querySelector('#construction-modal h3 span');
+        if (titleSpan) titleSpan.textContent = '施工記録の編集';
+        showToast('写真は新しく選び直さなければ、今の写真のままです', 'info');
+        v18ClaimBackground('construction', recId, holder => {
+            if (v18EditingConstructionId !== recId) return;
+            closeConstructionModal();
+            showToast(`${(holder && holder.userName) || '他の人'}さんが編集中でした`, 'error');
         });
     }
     if (typeof saveConstructionRecord === 'function') {
@@ -5595,7 +5652,9 @@
             const r = origEditAreaComment.apply(this, arguments);
             const box = document.getElementById('comment-edit-box-' + commentId);
             if (box && !box.classList.contains('hidden')) {
-                v18StartEditGuard('comment', commentId).then(ok => { if (!ok) box.classList.add('hidden'); });
+                const cachedClaim = v18GetOtherClaim('comment', commentId);
+                if (cachedClaim) { box.classList.add('hidden'); showToast(`${cachedClaim.userName || '他の人'}さんが編集中です`, 'error'); return r; }
+                v18ClaimBackground('comment', commentId, holder => { box.classList.add('hidden'); showToast(`${(holder && holder.userName) || '他の人'}さんが編集中でした`, 'error'); });
             }
             return r;
         };
@@ -5611,10 +5670,12 @@
     if (typeof openEditEquipmentModal === 'function') {
         const origOpenEqModal = openEditEquipmentModal;
         openEditEquipmentModal = function (id) {
+            const cachedClaim = v18GetOtherClaim('equipment', id);
+            if (cachedClaim) { showToast(`${cachedClaim.userName || '他の人'}さんが編集中です`, 'error'); return; }
             const r = origOpenEqModal.apply(this, arguments);
             const modal = document.getElementById('equipment-modal');
             if (modal && !modal.classList.contains('hidden')) {
-                v18StartEditGuard('equipment', id).then(ok => { if (!ok) { try { closeEquipmentModal(); } catch (e) {} } });
+                v18ClaimBackground('equipment', id, holder => { try { closeEquipmentModal(); } catch (e) {} showToast(`${(holder && holder.userName) || '他の人'}さんが編集中でした`, 'error'); });
             }
             return r;
         };
@@ -5741,7 +5802,10 @@
         if (id) {
             const pat = catalogPatterns.find(p => p.id === id);
             if (pat && !v18CanModify(pat)) { showToast('編集できるのは登録者と管理者だけです', 'error'); return; }
-            v18StartEditGuard('catalog', id).then(ok => { if (ok) v18OpenCatalogEditorInner(id); });
+            const cachedClaim = v18GetOtherClaim('catalog', id);
+            if (cachedClaim) { showToast(`${cachedClaim.userName || '他の人'}さんが編集中です`, 'error'); return; }
+            v18OpenCatalogEditorInner(id);
+            v18ClaimBackground('catalog', id, holder => { try { closeCatalogEditor(); } catch (e) {} showToast(`${(holder && holder.userName) || '他の人'}さんが編集中でした`, 'error'); });
             return;
         }
         v18OpenCatalogEditorInner(null);
