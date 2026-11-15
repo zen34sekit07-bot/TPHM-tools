@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mizuhodai-tool-v2';
+const CACHE_NAME = 'mizuhodai-tool-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,13 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        ASSETS.map((url) =>
+          fetch(url, { cache: 'no-store' }).then((res) => cache.put(url, res))
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -23,8 +29,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  // 外部オリジン（GAS・画像CDN等）はSWを介さずブラウザ標準に任せる
+  if (url.origin !== self.location.origin) return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
