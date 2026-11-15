@@ -1136,6 +1136,10 @@
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.1（2026/11/15）</div>
+                            <p class="mt-0.5">・スマホの「戻る」ボタンの動きを単純にしました。開いている窓があればそれを閉じ、なければホーム画面（式場全体図）へ戻り、ホーム画面でもう一度押すとアプリを出ます。画面を移動するたびに履歴が積み重なる方式はやめました</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.0.2（2026/11/15）</div>
                             <p class="mt-0.5">・再起動すると古い画面に戻ってしまう問題を修正（アプリのキャッシュ仕組みを更新し、古いキャッシュを破棄して常に最新を取得するよう変更）</p>
                         </div>
@@ -3106,102 +3110,154 @@
         }
 
         function pushNavState(stateName) {
+            // Ver 3.1: タブ移動・マップズームでは履歴を積まない（戻る操作の単純化）
+            if (stateName.indexOf('tab:') === 0 || stateName === 'map:zoom') return;
             navigationHistory.push(stateName);
             try {
-                history.pushState({ step: navigationHistory.length }, '');
+                history.pushState({ layer: stateName }, '');
             } catch (e) {}
         }
 
         function handleBackNavigation() {
+            // Ver 3.1: 戻る操作の単純化（開いている窓を閉じる → ホーム画面へ → 退出）
+            if (window.__v31Suppress > 0) { window.__v31Suppress--; return; }
+
+            const confirmDialog = document.getElementById('confirm-dialog');
+            if (confirmDialog && !confirmDialog.classList.contains('hidden')) {
+                window.__v31BackClosing = true;
+                const cb = document.getElementById('confirm-cancel');
+                if (cb) cb.click();
+                window.__v31BackClosing = false;
+                return;
+            }
+
+            const evModal = document.getElementById('v30-event-modal');
+            if (evModal && !evModal.classList.contains('hidden')) {
+                window.__v31BackClosing = true;
+                v30CloseEventForm();
+                window.__v31BackClosing = false;
+                v31SilentRemove('modal:event');
+                return;
+            }
+
+            const subOv = document.getElementById('v24-submosaic');
+            if (subOv && !subOv.classList.contains('hidden')) {
+                window.__v31BackClosing = true;
+                v24CloseSubMosaic();
+                window.__v31BackClosing = false;
+                v31SilentRemove('modal:submosaic');
+                return;
+            }
+
+            if (document.getElementById('v20-lightbox')) {
+                window.__v31BackClosing = true;
+                closeImageViewer();
+                window.__v31BackClosing = false;
+                v31SilentRemove('modal:viewer');
+                return;
+            }
+
+            const catModal = document.getElementById('catalog-editor-modal');
+            if (catModal && !catModal.classList.contains('hidden')) {
+                window.__v31BackClosing = true;
+                closeCatalogEditor();
+                window.__v31BackClosing = false;
+                v31SilentRemove('modal:catalog-editor');
+                return;
+            }
+
             const lightbox = document.getElementById('image-lightbox');
             if (lightbox && !lightbox.classList.contains('hidden')) {
                 closeImageLightbox(true);
+                v31SilentRemove('modal:lightbox');
                 return;
             }
 
             const pinEditorModal = document.getElementById('pin-editor-modal');
             if (pinEditorModal && !pinEditorModal.classList.contains('hidden')) {
                 closePinEditorModal(true);
+                v31SilentRemove('modal:pin-editor');
                 return;
             }
 
             const settingsSubModal = document.getElementById('settings-sub-modal');
             if (settingsSubModal && !settingsSubModal.classList.contains('hidden')) {
                 closeSettingsSubModal(true);
+                v31SilentRemove('modal:settings-sub:');
                 return;
             }
 
             const dbAdminModal = document.getElementById('db-admin-modal');
             if (dbAdminModal && !dbAdminModal.classList.contains('hidden')) {
                 closeDbAdminModal(true);
+                v31SilentRemove('modal:db-admin');
                 return;
             }
 
             const allCommentsModal = document.getElementById('all-comments-modal');
             if (allCommentsModal && !allCommentsModal.classList.contains('hidden')) {
                 closeAllCommentsModal(true);
+                v31SilentRemove('modal:all-comments');
                 return;
             }
 
             const constModal = document.getElementById('construction-modal');
             if (constModal && !constModal.classList.contains('hidden')) {
                 closeConstructionModal(true);
+                v31SilentRemove('modal:construction');
                 return;
             }
 
             const eqModal = document.getElementById('equipment-modal');
             if (eqModal && !eqModal.classList.contains('hidden')) {
                 closeEquipmentModal(true);
+                v31SilentRemove('modal:equipment');
                 return;
             }
 
             const areaModal = document.getElementById('area-modal');
             if (areaModal && !areaModal.classList.contains('hidden')) {
                 closeAreaModal(true);
+                v31SilentRemove('modal:area:');
                 return;
             }
 
             if (currentTab === 'map' && isMapZoomed) {
                 resetMapZoom(true);
+                v31RestoreGuard();
                 return;
-            }
-
-            if (navigationHistory.length > 0) {
-                const prev = navigationHistory.pop();
-                if (prev && prev.startsWith('tab:')) {
-                    const targetTab = prev.split(':')[1];
-                    switchTab(targetTab, true);
-                    return;
-                }
             }
 
             if (currentTab !== 'map') {
                 switchTab('map', true);
-                resetMapZoom(true);
+                v31RestoreGuard();
                 return;
             }
 
             if (hasUnsavedChanges) {
+                v31RestoreGuard();
                 showConfirmDialog(
                     "確認",
                     "未保存の変更データがあります。ポータル画面へ戻りますか？",
                     () => {
                         hasUnsavedChanges = false;
-                        location.href = "index.html";
+                        if (document.referrer && document.referrer.indexOf(location.host) !== -1) {
+                            history.back();
+                        } else {
+                            location.href = "index.html";
+                        }
                     }
                 );
                 return;
             }
-            if (document.referrer && document.referrer.indexOf(location.host) !== -1) {
-                history.back();
-            } else {
-                location.href = "index.html";
-            }
+
+            history.back();
         }
 
         function setupNavigationGuards() {
             try {
                 history.replaceState({ base: true }, '');
+                try { history.pushState({ app: 'guard' }, ''); } catch (e) {}
                 window.addEventListener('popstate', () => {
                     handleBackNavigation();
                 });
@@ -7091,6 +7147,110 @@
     } else {
         initVer16();
     }
+
+        // ===== Ver 3.1 戻る操作の単純化（履歴は窓の開閉だけに連動） =====
+        window.__v31Suppress = 0;
+        window.__v31BackClosing = false;
+
+        function v31RestoreGuard() {
+            try { history.pushState({ app: 'guard' }, ''); } catch (e) {}
+        }
+
+        function v31SilentRemove(name) {
+            for (let i = navigationHistory.length - 1; i >= 0; i--) {
+                const v = String(navigationHistory[i]);
+                if (v === name || (name.endsWith(':') && v.indexOf(name) === 0)) {
+                    navigationHistory.splice(i, 1);
+                    return;
+                }
+            }
+        }
+
+        // 窓をボタン等で閉じたときは、対応する履歴エントリも消費する（popに連動）
+        const __v31OrigNavPop = navigationHistory.pop.bind(navigationHistory);
+        navigationHistory.pop = function () {
+            const v = __v31OrigNavPop();
+            if (v && String(v).indexOf('modal:') === 0) {
+                window.__v31Suppress++;
+                try { history.back(); } catch (e) {}
+            }
+            return v;
+        };
+
+        // 確認ダイアログも1つの窓として履歴に連動させる
+        const __v31OrigShowConfirm = showConfirmDialog;
+        showConfirmDialog = function (title, message, onConfirm) {
+            pushNavState('modal:confirm');
+            __v31OrigShowConfirm(title, message, onConfirm);
+            const done = () => {
+                if (window.__v31BackClosing) v31SilentRemove('modal:confirm');
+                else if (navigationHistory[navigationHistory.length - 1] === 'modal:confirm') navigationHistory.pop();
+            };
+            const okBtn = document.getElementById('confirm-ok');
+            const cancelBtn = document.getElementById('confirm-cancel');
+            if (okBtn) okBtn.addEventListener('click', done, { once: true });
+            if (cancelBtn) cancelBtn.addEventListener('click', done, { once: true });
+        };
+
+        // Ver 2.0 写真ビューアの開閉を履歴に連動
+        const __v31OrigOpenViewer = openImageViewer;
+        openImageViewer = function () {
+            const r = __v31OrigOpenViewer.apply(this, arguments);
+            if (document.getElementById('v20-lightbox')) pushNavState('modal:viewer');
+            return r;
+        };
+        const __v31OrigCloseViewer = closeImageViewer;
+        closeImageViewer = function () {
+            const had = !!document.getElementById('v20-lightbox');
+            const r = __v31OrigCloseViewer.apply(this, arguments);
+            if (had && !window.__v31BackClosing && navigationHistory[navigationHistory.length - 1] === 'modal:viewer') navigationHistory.pop();
+            return r;
+        };
+
+        // Ver 3.0 規格エディタの開閉を履歴に連動
+        const __v31OrigOpenCatalog = openCatalogEditor;
+        openCatalogEditor = function () {
+            const r = __v31OrigOpenCatalog.apply(this, arguments);
+            const m = document.getElementById('catalog-editor-modal');
+            if (m && !m.classList.contains('hidden')) pushNavState('modal:catalog-editor');
+            return r;
+        };
+        const __v31OrigCloseCatalog = closeCatalogEditor;
+        closeCatalogEditor = function () {
+            const r = __v31OrigCloseCatalog.apply(this, arguments);
+            if (!window.__v31BackClosing && navigationHistory[navigationHistory.length - 1] === 'modal:catalog-editor') navigationHistory.pop();
+            return r;
+        };
+
+        // Ver 2.4 サブ写真モザイクの開閉を履歴に連動
+        const __v31OrigOpenSub = v24OpenSubMosaic;
+        v24OpenSubMosaic = function () {
+            const r = __v31OrigOpenSub.apply(this, arguments);
+            const ov = document.getElementById('v24-submosaic');
+            if (ov && !ov.classList.contains('hidden')) pushNavState('modal:submosaic');
+            return r;
+        };
+        const __v31OrigCloseSub = v24CloseSubMosaic;
+        v24CloseSubMosaic = function () {
+            const r = __v31OrigCloseSub.apply(this, arguments);
+            if (!window.__v31BackClosing && navigationHistory[navigationHistory.length - 1] === 'modal:submosaic') navigationHistory.pop();
+            return r;
+        };
+
+        // Ver 3.0 カレンダー予定モーダルの開閉を履歴に連動
+        const __v31OrigOpenEv = v30OpenEventForm;
+        v30OpenEventForm = function () {
+            const r = __v31OrigOpenEv.apply(this, arguments);
+            const m = document.getElementById('v30-event-modal');
+            if (m && !m.classList.contains('hidden')) pushNavState('modal:event');
+            return r;
+        };
+        const __v31OrigCloseEv = v30CloseEventForm;
+        v30CloseEventForm = function () {
+            const r = __v31OrigCloseEv.apply(this, arguments);
+            if (!window.__v31BackClosing && navigationHistory[navigationHistory.length - 1] === 'modal:event') navigationHistory.pop();
+            return r;
+        };
     </script>
 
     <!-- サブ写真モーダルモザイク編集（Ver 2.4） -->
