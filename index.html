@@ -1144,6 +1144,10 @@
                 <div id="subview-changelog" class="settings-subview hidden space-y-2.5">
                     <div class="bg-white p-4 rounded-md border border-stone-200 space-y-3 text-sm text-stone-700 leading-relaxed">
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.13（2026/11/16）</div>
+                            <p class="mt-0.5">・施工記録の編集、カタログの規格、什器、エリアの変更、各種の削除やロック、サブ写真の情報まで、すべての保存が確実に届くようにしました。通信に失敗しても内容は端末に残り、回復したら自動で再送します</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.12（2026/11/16）</div>
                             <p class="mt-0.5">・館内図のコメント（投稿・編集・削除）も、予定・施工記録と同じく確実に保存されるようにしました。通信に失敗しても消えず、回復したら自動で再送します。失敗したときは詳細をウィンドウで知らせます<br>・更新履歴の並び順を直しました</p>
                         </div>
@@ -1538,7 +1542,7 @@
             return null;
         }
 
-        async function syncAreaToCloud(areaId) {
+        async function syncAreaToCloud(areaId, opts = {}) {
             const area = areaData[areaId];
             if (!area) return null;
             deletedAreaIds = deletedAreaIds.filter(id => id !== areaId);
@@ -1560,6 +1564,14 @@
                     images: area.images || []
                 }
             });
+            if (res && res.status !== 'error') {
+                if (area._pendingUpdate) { delete area._pendingUpdate; persistAreaData(); }
+            } else {
+                area._pendingUpdate = true;
+                persistAreaData();
+                if (!opts.silent) showToast('エリアの変更を共有できませんでした。通信が回復したら自動で再送します', 'error');
+                if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
+            }
             if (res && Array.isArray(res.images) && areaData[areaId]) {
                 const cleaned = res.images.map(getSafeDriveImageUrl).filter(Boolean);
                 if (cleaned.length > 0) {
@@ -1579,8 +1591,51 @@
                 deletedAreaIds.push(areaId);
                 saveJsonArrayStorage('mizuhodai_deleted_area_ids', deletedAreaIds);
             }
+            const pd = loadPendingAreaDeletes();
+            if (!pd.includes(areaId)) { pd.push(areaId); savePendingAreaDeletes(pd); }
             persistAreaData();
-            postActionToGas({ action: 'deleteArea', areaId });
+            postActionToGas({ action: 'deleteArea', areaId }).then(res => {
+                if (res && res.status !== 'error') {
+                    savePendingAreaDeletes(loadPendingAreaDeletes().filter(x => x !== areaId));
+                } else {
+                    if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
+                }
+            });
+        }
+
+        function loadPendingConstructionDeletes() { return loadJsonArrayStorage('mizuhodai_construction_pending_deletes_v1'); }
+        function savePendingConstructionDeletes(l) { saveJsonArrayStorage('mizuhodai_construction_pending_deletes_v1', l); }
+        function loadPendingAreaDeletes() { return loadJsonArrayStorage('mizuhodai_area_pending_deletes_v1'); }
+        function savePendingAreaDeletes(l) { saveJsonArrayStorage('mizuhodai_area_pending_deletes_v1', l); }
+        function loadCatalogPendingDeletes() { return loadJsonArrayStorage('mizuhodai_catalog_pending_deletes_v1'); }
+        function saveCatalogPendingDeletes(l) { saveJsonArrayStorage('mizuhodai_catalog_pending_deletes_v1', l); }
+        function loadMetaPending() { return loadJsonArrayStorage('mizuhodai_meta_pending_v1'); }
+        function saveMetaPending(l) { saveJsonArrayStorage('mizuhodai_meta_pending_v1', l); }
+
+        // 削除・什器・カタログ・サブ写真情報など、残りの未共有分の再送（すべて上書き型・冪等）
+        async function retryPendingMisc() {
+            for (const id of loadPendingConstructionDeletes()) {
+                const res = await postActionToGas({ action: 'deleteConstruction', recordId: id }).catch(() => null);
+                if (res && res.status !== 'error') savePendingConstructionDeletes(loadPendingConstructionDeletes().filter(x => x !== id));
+            }
+            for (const id of loadPendingAreaDeletes()) {
+                const res = await postActionToGas({ action: 'deleteArea', areaId: id }).catch(() => null);
+                if (res && res.status !== 'error') savePendingAreaDeletes(loadPendingAreaDeletes().filter(x => x !== id));
+            }
+            for (const id of loadCatalogPendingDeletes()) {
+                const res = await postCatalogToGas({ action: 'deleteCatalog', catalogId: id }).catch(() => null);
+                if (res && res.status === 'ok') saveCatalogPendingDeletes(loadCatalogPendingDeletes().filter(x => x !== id));
+            }
+            (equipmentData || []).filter(e => e && e._pending).forEach(e => { try { syncEquipmentToCloud(e, { silent: true }); } catch (err) {} });
+            try { (catalogPatterns || []).filter(p => p && p._pending).forEach(p => { try { syncCatalogPattern(p, { silent: true }); } catch (err) {} }); } catch (e) {}
+            try { Object.keys(areaData || {}).forEach(aId => { if (areaData[aId] && areaData[aId]._pendingUpdate) { try { syncAreaToCloud(aId, { silent: true }); } catch (err) {} } }); } catch (e) {}
+            for (const id of loadMetaPending()) {
+                const meta = (window.V21 && window.V21.meta) ? window.V21.meta[id] : null;
+                if (!meta) { saveMetaPending(loadMetaPending().filter(x => x !== id)); continue; }
+                const res = await postCatalogToGas({ action: 'setRecordMeta', recordId: id, subImages: meta.subImages || [], updatedAt: meta.updatedAt || '' }).catch(() => null);
+                if (res && res.status === 'ok') saveMetaPending(loadMetaPending().filter(x => x !== id));
+            }
+            return true;
         }
 
         function loadPendingCommentDeletes() { return loadJsonArrayStorage('mizuhodai_comment_pending_deletes_v1'); }
@@ -1716,11 +1771,19 @@
             return constructionRecords.filter(r => r && r._pending).length === 0;
         }
 
-        function syncUpdateConstructionToCloud(recObj) {
+        function syncUpdateConstructionToCloud(recObj, opts = {}) {
+            recObj._pendingUpdate = true;
             persistLocalAppData();
             postActionToGas({
                 action: 'updateConstruction',
                 record: { id: recObj.id, locked: recObj.locked ? 1 : 0 }
+            }).then(res => {
+                if (res && res.status !== 'error') {
+                    if (recObj._pendingUpdate) { delete recObj._pendingUpdate; persistLocalAppData(); }
+                } else {
+                    if (!opts.silent) showToast('ロックの変更を共有できませんでした。通信が回復したら自動で再送します', 'error');
+                    if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
+                }
             });
         }
 
@@ -1729,15 +1792,35 @@
                 deletedConstructionIds.push(recId);
                 saveJsonArrayStorage('mizuhodai_deleted_construction_ids', deletedConstructionIds);
             }
+            const pd = loadPendingConstructionDeletes();
+            if (!pd.includes(recId)) { pd.push(recId); savePendingConstructionDeletes(pd); }
             persistLocalAppData();
-            postActionToGas({ action: 'deleteConstruction', recordId: recId });
+            postActionToGas({ action: 'deleteConstruction', recordId: recId }).then(res => {
+                if (res && res.status !== 'error') {
+                    savePendingConstructionDeletes(loadPendingConstructionDeletes().filter(x => x !== recId));
+                } else {
+                    if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
+                }
+            });
         }
 
-        function syncEquipmentToCloud(eqObj) {
+        function syncEquipmentToCloud(eqObj, opts = {}) {
+            eqObj._pending = true;
             persistLocalAppData();
+            const payload = Object.assign({}, eqObj);
+            delete payload._pending;
             postActionToGas({
                 action: 'upsertEquipment',
-                equipment: eqObj
+                equipment: payload
+            }).then(res => {
+                if (res && res.status !== 'error') {
+                    if (eqObj._pending) { delete eqObj._pending; persistLocalAppData(); }
+                } else {
+                    if (!opts.silent && typeof showSyncErrorModal === 'function') {
+                        showSyncErrorModal({ kind: '什器', op: '保存', title: ((eqObj.code || '') + ' ' + (eqObj.name || '')).trim(), dateLabel: '', reason: (typeof syncFailReason === 'function') ? syncFailReason() : '通信に失敗しました' });
+                    }
+                    if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
+                }
             });
         }
 
@@ -2371,6 +2454,7 @@
                         data.areas.forEach(rArea => {
                             const aId = String(rArea.id || '');
                             if (!aId || deletedAreaIds.includes(aId)) return;
+                            if (areaData[aId] && areaData[aId]._pendingUpdate) return;
                             const existingComments = (areaData[aId] && Array.isArray(areaData[aId].comments)) ? areaData[aId].comments : [];
                             const remoteImgs = Array.isArray(rArea.images) ? rArea.images.map(getSafeDriveImageUrl).filter(Boolean) : [];
                             const backupMap = loadAreaPhotoUrlBackup();
@@ -2485,10 +2569,14 @@
                         if (syncedRecs.length > 0) {
                             const remoteIdSet = new Set(syncedRecs.map(r => r.id));
                             const localOnlyRecs = constructionRecords.filter(r => !remoteIdSet.has(r.id) && !deletedConstructionIds.includes(r.id) && ((Date.now() - (parseInt(String(r.id).replace('rec_', ''), 10) || 0)) < 10 * 60 * 1000 || r._pending));
-                            constructionRecords = localOnlyRecs.concat(syncedRecs);
+                            const localUpdMap = new Map(constructionRecords.filter(r => r && (r._pendingUpdate || r._editPending)).map(r => [r.id, r]));
+                            const mergedSyncedRecs = syncedRecs.map(sr => localUpdMap.get(sr.id) || sr);
+                            constructionRecords = localOnlyRecs.concat(mergedSyncedRecs);
                             persistLocalAppData();
                             renderConstructionList();
-                            localOnlyRecs.filter(r => r._pending).forEach(r => { try { syncNewConstructionToCloud(r, { silent: true }); } catch (e) {} });
+                            localOnlyRecs.filter(r => r._pending).forEach(r => { try { if (r._editPending) { v21SyncEditedConstruction(r, { silent: true }); } else { syncNewConstructionToCloud(r, { silent: true }); } } catch (e) {} });
+                            mergedSyncedRecs.filter(r => r._editPending).forEach(r => { try { v21SyncEditedConstruction(r, { silent: true }); } catch (e) {} });
+                            mergedSyncedRecs.filter(r => r._pendingUpdate && !r._editPending).forEach(r => { try { syncUpdateConstructionToCloud(r, { silent: true }); } catch (e) {} });
                         }
                     }
 
@@ -2511,10 +2599,15 @@
                             });
                         });
                         if (syncedEq.length > 0) {
-                            equipmentData = syncedEq;
+                            const localPendEq = equipmentData.filter(e => e && e._pending);
+                            const serverEqIds = new Set(syncedEq.map(e => e.id));
+                            const mergedEq = syncedEq.map(se => localPendEq.find(e => e.id === se.id) || se);
+                            localPendEq.filter(e => !serverEqIds.has(e.id)).forEach(e => mergedEq.push(e));
+                            equipmentData = mergedEq;
                             persistLocalAppData();
                             renderEquipmentTreeList();
                             renderEquipmentSelector();
+                            mergedEq.filter(e => e._pending).forEach(e => { try { syncEquipmentToCloud(e, { silent: true }); } catch (err) {} });
                         }
                     }
                     const subModal = document.getElementById('settings-sub-modal');
@@ -6196,7 +6289,16 @@
         if (!rec || !rec.id) return;
         window.V21.meta[rec.id] = { subImages: rec.subImages || [], updatedAt: rec.updatedAt || '' };
         try { localStorage.setItem('mizuhodai_record_meta_v1', JSON.stringify(window.V21.meta)); } catch (e) {}
-        try { postCatalogToGas({ action: 'setRecordMeta', recordId: rec.id, subImages: rec.subImages || [], updatedAt: rec.updatedAt || '' }); } catch (e) {}
+        const onMetaFail = () => {
+            const mp = loadMetaPending();
+            if (!mp.includes(rec.id)) { mp.push(rec.id); saveMetaPending(mp); }
+            if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
+        };
+        postCatalogToGas({ action: 'setRecordMeta', recordId: rec.id, subImages: rec.subImages || [], updatedAt: rec.updatedAt || '' }).then(res => {
+            if (res && res.status === 'ok') {
+                saveMetaPending(loadMetaPending().filter(x => x !== rec.id));
+            } else { onMetaFail(); }
+        }).catch(onMetaFail);
     }
     function v21PostedLabel(rec) {
         if (rec.updatedAt) {
@@ -6286,13 +6388,30 @@
         if (uploadCount > 0) { v26ProgressStep(); v26ProgressEnd(); }
         try { renderConstructionList(); } catch (e) {}
     }
-    async function v21SyncEditedConstruction(rec) {
+    async function v21SyncEditedConstruction(rec, opts = {}) {
+        rec._pending = true;
+        rec._editPending = true;
+        persistLocalAppData();
+        let ok = false;
         try {
             const payload = { id: rec.id, userId: rec.userId, author: rec.author, org: rec.org, locked: rec.locked ? 1 : 0, date: normalizeDateStr(rec.date), code: rec.code, notes: rec.notes, equipmentIds: rec.equipmentIds || [], image: rec.image };
             await postActionToGas({ action: 'deleteConstruction', recordId: rec.id });
             const res = await postActionToGas({ action: 'addConstruction', record: payload });
-            if (res && res.imageUrl) { rec.image = res.imageUrl; persistLocalAppData(); }
+            if (res && res.status !== 'error') {
+                ok = true;
+                if (res.imageUrl) { rec.image = res.imageUrl; }
+            }
         } catch (e) {}
+        if (ok) {
+            delete rec._pending;
+            delete rec._editPending;
+        } else {
+            if (!opts.silent && typeof showSyncErrorModal === 'function') {
+                showSyncErrorModal({ kind: '施工記録', op: '編集', title: rec.code || '', dateLabel: formatJapaneseDate(rec.date), reason: (typeof syncFailReason === 'function') ? syncFailReason() : '通信に失敗しました' });
+            }
+            if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
+        }
+        persistLocalAppData();
         try { renderConstructionList(); } catch (e) {}
     }
     // ===== Ver 2.4 サブ写真モザイク編集 =====
@@ -6606,6 +6725,11 @@
         try { n += v30LoadPendingDeletes().length; } catch (e) {}
         try { n += constructionRecords.filter(r => r && r._pending).length; } catch (e) {}
         try { Object.values(areaData || {}).forEach(a => (a.comments || []).forEach(c => { if (c && (c._pending || c._pendingUpdate)) n++; })); n += loadPendingCommentDeletes().length; } catch (e) {}
+        try { n += constructionRecords.filter(r => r && r._pendingUpdate).length; } catch (e) {}
+        try { n += equipmentData.filter(e => e && e._pending).length; } catch (e) {}
+        try { n += catalogPatterns.filter(p => p && p._pending).length; } catch (e) {}
+        try { n += Object.values(areaData || {}).filter(a => a && a._pendingUpdate).length; } catch (e) {}
+        try { n += loadPendingConstructionDeletes().length + loadPendingAreaDeletes().length + loadCatalogPendingDeletes().length + loadMetaPending().length; } catch (e) {}
         return n;
     }
     async function retryAllPendingSync() {
@@ -6614,6 +6738,7 @@
         try { await v30RetryPendingEvents(); } catch (e) {}
         try { if (typeof retryPendingRecords === 'function') await retryPendingRecords(); } catch (e) {}
         try { if (typeof retryPendingComments === 'function') await retryPendingComments(); } catch (e) {}
+        try { if (typeof retryPendingMisc === 'function') await retryPendingMisc(); } catch (e) {}
         await new Promise(r => setTimeout(r, 1200));
         if (pendingSyncCount() === 0) {
             const m = document.getElementById('sync-error-modal');
@@ -7008,7 +7133,13 @@
         if (typeof v18CanModify === 'function' && !v18CanModify(pat)) { showToast('削除できるのは登録者と管理者だけです', 'error'); return; }
         if (!confirm('この規格を削除しますか？')) return;
         catalogPatterns = catalogPatterns.filter(p => p.id !== id);
-        try { postCatalogToGas({ action: 'deleteCatalog', catalogId: id }); } catch (e) {}
+        const cpd = loadCatalogPendingDeletes();
+        if (!cpd.includes(id)) { cpd.push(id); saveCatalogPendingDeletes(cpd); }
+        postCatalogToGas({ action: 'deleteCatalog', catalogId: id }).then(res => {
+            if (res && res.status === 'ok') {
+                saveCatalogPendingDeletes(loadCatalogPendingDeletes().filter(x => x !== id));
+            } else if (typeof scheduleSyncRetry === 'function') { scheduleSyncRetry(); }
+        }).catch(() => { if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry(); });
         persistCatalog();
         renderCatalogSection();
         refreshConstCatalogSelect();
@@ -7343,8 +7474,22 @@
     function persistCatalog() {
         try { localStorage.setItem('mizuhodai_catalog_v1', JSON.stringify(catalogPatterns)); } catch (e) {}
     }
-    function syncCatalogPattern(pat) {
-        try { postCatalogToGas({ action: 'upsertCatalog', pattern: pat }); } catch (e) {}
+    function syncCatalogPattern(pat, opts = {}) {
+        pat._pending = true;
+        persistCatalog();
+        const payload = Object.assign({}, pat);
+        delete payload._pending;
+        const onFail = () => {
+            if (!opts.silent && typeof showSyncErrorModal === 'function') {
+                showSyncErrorModal({ kind: 'カタログの規格', op: '保存', title: pat.name || '', dateLabel: '', reason: (typeof syncFailReason === 'function') ? syncFailReason() : '通信に失敗しました' });
+            }
+            if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
+        };
+        postCatalogToGas({ action: 'upsertCatalog', pattern: payload }).then(res => {
+            if (res && res.status === 'ok') {
+                if (pat._pending) { delete pat._pending; persistCatalog(); }
+            } else { onFail(); }
+        }).catch(onFail);
     }
     function equipmentNameByCode(code) {
         try {
@@ -7424,13 +7569,19 @@
             const data = await res.json();
             if (data && Array.isArray(data.catalog) && data.catalog.length) {
                 const map = new Map(catalogPatterns.map(p => [p.id, p]));
+                const catPendDel = new Set(loadCatalogPendingDeletes());
                 data.catalog.forEach(rp => {
-                    if (rp && rp.id) map.set(String(rp.id), { id: String(rp.id), name: String(rp.name || ''), memo: String(rp.memo || ''), codes: Array.isArray(rp.codes) ? rp.codes.map(String) : [], updatedAt: rp.updatedAt || '', userId: String(rp.userId || ''), author: String(rp.author || ''), org: String(rp.org || ''), locked: !!rp.locked, oasis: String(rp.oasis || '') });
+                    if (rp && rp.id && !catPendDel.has(String(rp.id))) {
+                        const localPat = map.get(String(rp.id));
+                        if (localPat && localPat._pending) return;
+                        map.set(String(rp.id), { id: String(rp.id), name: String(rp.name || ''), memo: String(rp.memo || ''), codes: Array.isArray(rp.codes) ? rp.codes.map(String) : [], updatedAt: rp.updatedAt || '', userId: String(rp.userId || ''), author: String(rp.author || ''), org: String(rp.org || ''), locked: !!rp.locked, oasis: String(rp.oasis || '') });
+                    }
                 });
                 catalogPatterns = [...map.values()];
                 persistCatalog();
                 renderCatalogSection();
                 refreshConstCatalogSelect();
+                catalogPatterns.filter(p => p._pending).forEach(p => { try { syncCatalogPattern(p, { silent: true }); } catch (e) {} });
             }
             if (data && Array.isArray(data.events) && window.V30) {
                 const pendingDeleteIds = new Set(v30LoadPendingDeletes());
@@ -7448,7 +7599,8 @@
             }
             if (data && data.recordMeta && typeof data.recordMeta === 'object' && window.V21) {
                 try {
-                    Object.keys(data.recordMeta).forEach(k => { window.V21.meta[k] = data.recordMeta[k]; });
+                    const metaPend = loadMetaPending();
+                    Object.keys(data.recordMeta).forEach(k => { if (!metaPend.includes(k)) window.V21.meta[k] = data.recordMeta[k]; });
                     localStorage.setItem('mizuhodai_record_meta_v1', JSON.stringify(window.V21.meta));
                     v21ApplyMeta();
                 } catch (e) {}
