@@ -1148,6 +1148,10 @@
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.8（2026/11/16）</div>
+                            <p class="mt-0.5">・カレンダーの葬儀マークを、●と横棒がつながったダンベル型に変えました。続く日は上下の段を交互に変えるので、長い線にならず1日ずつ読み取れます。●と棒は小さく・細く・薄くしました<br>・予定のマーク（★など）に白い縁取りを付けて、線の上でも見やすくしました</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.7（2026/11/16）</div>
                             <p class="mt-0.5">・カレンダーの予定が投稿できないことがある問題を修正しました（通信に失敗しても予定が消えず、失敗したことが表示され、通信が回復したときに自動で共有し直します）<br>・館内図でタップしたピンが大きく光って分かるようにしました。ピンの吹き出しの閉じるボタンも右端に寄せました<br>・施工記録のカードに「投稿者」と「規格」を担当と同じ枠付きの表示で追加しました</p>
                         </div>
@@ -6474,7 +6478,8 @@
             const ymd = v30Ymd(d);
             const inMonth = d.getMonth() === m;
             const isFuneral = funerals.has(ymd);
-            const prevFuneral = funerals.has(v30Ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)));
+            const laneBottom = (d.getDate() % 2 === 0) ? 3 : 11;
+            const dumbbell = isFuneral ? `<span class="absolute" style="left:14%;right:14%;bottom:${laneBottom}px;height:6px"><span class="absolute rounded-full" style="left:0;right:0;top:50%;transform:translateY(-50%);height:2px;background:rgba(252,165,165,.7)"></span><span class="absolute rounded-full" style="left:0;top:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:#f87171"></span><span class="absolute rounded-full" style="right:0;top:50%;transform:translate(50%,-50%);width:6px;height:6px;background:#f87171"></span></span>` : '';
             const evs = evByDate[ymd] || [];
             const dow = d.getDay();
             const rk = getRokuyo(d.getFullYear(), d.getMonth() + 1, d.getDate());
@@ -6482,11 +6487,9 @@
             cells += `<button type="button" onclick="v30SelectDay('${ymd}')" class="relative text-left rounded-md border ${inMonth ? 'border-stone-200 bg-white hover:bg-amber-50' : 'border-stone-100 bg-stone-50'} ${window.V30.selectedDay === ymd ? 'ring-1 ring-[#8c672a] border-[#8c672a] bg-amber-50' : ''} px-1 pt-1 pb-4 min-h-[64px] align-top overflow-hidden">
                 <span class="text-xl font-bold ${dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-stone-700'}" ${isToday ? 'style="background:#8c672a;color:#fff;border-radius:9999px;padding:1px 6px;"' : ''}>${d.getDate()}</span>
                 <span class="block text-xs text-stone-500 leading-tight">${rk}</span>
-                ${prevFuneral ? '<span class="absolute bottom-[7px] left-0 w-1/2 h-[3px] bg-red-300/80 rounded-full"></span>' : ''}
-                ${isFuneral ? '<span class="absolute bottom-[7px] left-1/2 right-0 h-[3px] bg-red-300/80 rounded-full"></span>' : ''}
+                ${dumbbell}
                 <span class="absolute left-1 bottom-0.5 flex items-center gap-0.5">
-                    ${isFuneral ? '<span class="w-2 h-2 rounded-full bg-red-500 inline-block shrink-0"></span>' : ''}
-                    ${evs.slice(0, 3).map(ev => `<span style="color:${v30SymbolOf(ev).color}" class="text-[13px] leading-none">${v30SymbolOf(ev).char}</span>`).join('')}
+                    ${evs.slice(0, 3).map(ev => `<span style="color:${v30SymbolOf(ev).color};text-shadow:-1px 0 0 #fff,1px 0 0 #fff,0 -1px 0 #fff,0 1px 0 #fff,0 0 4px #fff" class="text-[13px] leading-none">${v30SymbolOf(ev).char}</span>`).join('')}
                     ${evs.length > 3 ? `<span class="text-[11px] text-stone-400">+${evs.length - 3}</span>` : ''}
                 </span>
             </button>`;
