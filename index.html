@@ -1148,6 +1148,10 @@
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.10（2026/11/16）</div>
+                            <p class="mt-0.5">・葬儀のバーを、その日の左端から翌日の右端までの幅にしました（続く日は上下交互に重なります）<br>・投稿（予定・施工記録）が確実に保存されるようにしました。通信に失敗しても内容は端末に残り、回復したら自動で再送します。失敗したときは、対象・時刻・原因をウィンドウで詳しく知らせます</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.9（2026/11/16）</div>
                             <p class="mt-0.5">・葬儀のバーを、その日の左端から右端まで引くようにしました。続く日は隣とつながって見えます<br>・タブ移動のたびに行っていた全件の通信を間引きました。通信中は重ねて送らず、30秒以内の移動では再通信しません（投稿などの書き込みは今まで通りその場で送ります）</p>
                         </div>
@@ -1610,21 +1614,41 @@
             postActionToGas({ action: 'deleteAreaComment', areaId, commentId });
         }
 
-        function syncNewConstructionToCloud(recObj) {
+        function syncNewConstructionToCloud(recObj, opts = {}) {
             persistLocalAppData();
+            const payloadRec = Object.assign({}, recObj);
+            delete payloadRec._pending;
             postActionToGas({
                 action: 'addConstruction',
-                record: recObj
+                record: payloadRec
             }).then(res => {
-                if (res && res.imageUrl) {
-                    const target = constructionRecords.find(r => r.id === recObj.id);
-                    if (target) {
-                        target.image = res.imageUrl;
-                        persistLocalAppData();
-                        renderConstructionList();
+                if (res && res.status !== 'error') {
+                    if (recObj._pending) { delete recObj._pending; persistLocalAppData(); }
+                    if (res.imageUrl) {
+                        const target = constructionRecords.find(r => r.id === recObj.id);
+                        if (target) {
+                            target.image = res.imageUrl;
+                            persistLocalAppData();
+                            renderConstructionList();
+                        }
                     }
+                } else {
+                    recObj._pending = true;
+                    persistLocalAppData();
+                    if (!opts.silent && typeof showSyncErrorModal === 'function') {
+                        showSyncErrorModal({ kind: '施工記録', op: '投稿', title: recObj.code || '', dateLabel: formatJapaneseDate(recObj.date), reason: (typeof syncFailReason === 'function') ? syncFailReason() : '通信に失敗しました' });
+                    }
+                    if (typeof scheduleSyncRetry === 'function') scheduleSyncRetry();
                 }
             });
+        }
+
+        // 未共有の施工記録は、クラウド取得で「サーバーに無い」ことを確認してから再送する（多重投稿の防止）
+        async function retryPendingRecords() {
+            const pend = constructionRecords.filter(r => r && r._pending);
+            if (!pend.length) return true;
+            try { await fetchUsersFromDriveSheet(true); } catch (e) {}
+            return constructionRecords.filter(r => r && r._pending).length === 0;
         }
 
         function syncUpdateConstructionToCloud(recObj) {
@@ -2381,10 +2405,11 @@
                         });
                         if (syncedRecs.length > 0) {
                             const remoteIdSet = new Set(syncedRecs.map(r => r.id));
-                            const localOnlyRecs = constructionRecords.filter(r => !remoteIdSet.has(r.id) && !deletedConstructionIds.includes(r.id) && (Date.now() - (parseInt(String(r.id).replace('rec_', ''), 10) || 0)) < 10 * 60 * 1000);
+                            const localOnlyRecs = constructionRecords.filter(r => !remoteIdSet.has(r.id) && !deletedConstructionIds.includes(r.id) && ((Date.now() - (parseInt(String(r.id).replace('rec_', ''), 10) || 0)) < 10 * 60 * 1000 || r._pending));
                             constructionRecords = localOnlyRecs.concat(syncedRecs);
                             persistLocalAppData();
                             renderConstructionList();
+                            localOnlyRecs.filter(r => r._pending).forEach(r => { try { syncNewConstructionToCloud(r, { silent: true }); } catch (e) {} });
                         }
                     }
 
@@ -3177,6 +3202,15 @@
                 const cb = document.getElementById('confirm-cancel');
                 if (cb) cb.click();
                 window.__v31BackClosing = false;
+                return;
+            }
+
+            const syncErrModal = document.getElementById('sync-error-modal');
+            if (syncErrModal && !syncErrModal.classList.contains('hidden')) {
+                window.__v31BackClosing = true;
+                closeSyncErrorModal();
+                window.__v31BackClosing = false;
+                v31SilentRemove('modal:syncerror');
                 return;
             }
 
@@ -4458,6 +4492,7 @@
             markUnsaved();
             renderConstructionList();
             closeConstructionModal();
+            newRecObj._pending = true;
             syncNewConstructionToCloud(newRecObj);
             showToast("施工記録と写真を保存・共有しました", "success");
         }
@@ -6459,19 +6494,101 @@
     ];
     function v30SymbolOf(ev) { return V30_SYMBOLS.find(s => s.key === (ev && ev.symbol)) || V30_SYMBOLS[0]; }
     function v30PersistEvents() { try { localStorage.setItem('mizuhodai_events_v1', JSON.stringify(window.V30.events)); } catch (e) {} }
+    // ---- 共有の確実化: 失敗の詳細表示・自動再送・未送信の保持 ----
+    function syncFailReason() {
+        return navigator.onLine ? 'サーバーから応答がありませんでした（通信が不安定な可能性があります）' : 'オフラインです（通信がつながっていません）';
+    }
+    function showSyncErrorModal(info) {
+        const body = document.getElementById('sync-error-body');
+        if (body) {
+            body.innerHTML = `
+                <p>${escapeHtml(info.kind)}の${escapeHtml(info.op)}を、共有サーバーへ保存できませんでした。</p>
+                <div class="bg-white border border-stone-200 rounded p-2.5 space-y-1">
+                    <p>・対象: ${escapeHtml(info.title || '')}${info.dateLabel ? '（' + escapeHtml(info.dateLabel) + '）' : ''}</p>
+                    <p>・時刻: ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</p>
+                    <p>・原因: ${escapeHtml(info.reason || '')}</p>
+                </div>
+                <p>内容は<b>この端末には保存されています</b>。通信が回復したら自動で再送します。「今すぐ再送」でも送れます。</p>
+                <p id="sync-error-status" class="text-[13px] text-stone-500"></p>`;
+        }
+        const m = document.getElementById('sync-error-modal');
+        if (m && m.classList.contains('hidden')) { m.classList.remove('hidden'); pushNavState('modal:syncerror'); }
+    }
+    function closeSyncErrorModal() {
+        const m = document.getElementById('sync-error-modal');
+        if (m) m.classList.add('hidden');
+        if (!window.__v31BackClosing && navigationHistory[navigationHistory.length - 1] === 'modal:syncerror') navigationHistory.pop();
+    }
+    function v30LoadPendingDeletes() { try { const r = JSON.parse(localStorage.getItem('mizuhodai_event_deletes_v1') || '[]'); return Array.isArray(r) ? r.map(String) : []; } catch (e) { return []; } }
+    function v30SavePendingDeletes(list) { try { localStorage.setItem('mizuhodai_event_deletes_v1', JSON.stringify(list)); } catch (e) {} }
+    function pendingSyncCount() {
+        let n = 0;
+        try { n += window.V30.events.filter(e => e && e._pending).length; } catch (e) {}
+        try { n += v30LoadPendingDeletes().length; } catch (e) {}
+        try { n += constructionRecords.filter(r => r && r._pending).length; } catch (e) {}
+        return n;
+    }
+    async function retryAllPendingSync() {
+        const status = document.getElementById('sync-error-status');
+        if (status) status.textContent = '再送しています…';
+        try { await v30RetryPendingEvents(); } catch (e) {}
+        try { if (typeof retryPendingRecords === 'function') await retryPendingRecords(); } catch (e) {}
+        await new Promise(r => setTimeout(r, 1200));
+        if (pendingSyncCount() === 0) {
+            const m = document.getElementById('sync-error-modal');
+            if (m && !m.classList.contains('hidden')) { closeSyncErrorModal(); showToast('共有できました', 'success'); }
+            window.__syncRetryStep = 0;
+        } else {
+            if (status) status.textContent = 'まだ共有できていません。自動で再送を続けます。';
+            scheduleSyncRetry();
+        }
+    }
+    function scheduleSyncRetry() {
+        if (window.__syncRetryTimer) return;
+        const delays = [10000, 30000, 60000, 120000];
+        const step = window.__syncRetryStep || 0;
+        window.__syncRetryTimer = setTimeout(() => {
+            window.__syncRetryTimer = null;
+            window.__syncRetryStep = step + 1;
+            retryAllPendingSync();
+        }, delays[Math.min(step, delays.length - 1)]);
+    }
+    window.addEventListener('online', () => { try { retryAllPendingSync(); } catch (e) {} });
+    async function v30RetryPendingEvents() {
+        const jobs = [];
+        window.V30.events.filter(e => e && e._pending).forEach(ev => jobs.push(v30SyncEvent(ev, 'silent')));
+        v30LoadPendingDeletes().forEach(id => {
+            jobs.push(postCatalogToGas({ action: 'deleteEvent', eventId: id }).then(res => {
+                if (res && res.status === 'ok') { v30SavePendingDeletes(v30LoadPendingDeletes().filter(x => x !== id)); return true; }
+                return false;
+            }).catch(() => false));
+        });
+        if (!jobs.length) return true;
+        const rs = await Promise.all(jobs);
+        return rs.every(Boolean);
+    }
     // 共有が確認できるまで _pending を付け、失敗したら知らせる（端末内の予定は消さない）
-    function v30SyncEvent(ev) {
+    function v30SyncEvent(ev, ui, op) {
         const payload = Object.assign({}, ev);
         delete payload._pending;
         ev._pending = true;
         v30PersistEvents();
-        postCatalogToGas({ action: 'upsertEvent', event: payload }).then(res => {
-            if (res && res.status === 'ok') {
-                if (ev._pending) { delete ev._pending; v30PersistEvents(); }
-            } else {
+        const onFail = () => {
+            if (ui === 'modal') {
+                showSyncErrorModal({ kind: 'カレンダーの予定', op: op || '投稿', title: ev.title || '', dateLabel: formatJapaneseDate(ev.date), reason: syncFailReason() });
+            } else if (ui === 'toast') {
                 showToast('通信に失敗しました。予定はこの端末に保存されていますが、まだ共有されていません', 'error');
             }
-        }).catch(() => { showToast('通信に失敗しました。予定はこの端末に保存されていますが、まだ共有されていません', 'error'); });
+            scheduleSyncRetry();
+            return false;
+        };
+        return postCatalogToGas({ action: 'upsertEvent', event: payload }).then(res => {
+            if (res && res.status === 'ok') {
+                if (ev._pending) { delete ev._pending; v30PersistEvents(); }
+                return true;
+            }
+            return onFail();
+        }).catch(onFail);
     }
     function v30Ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
     function v30FuneralDates() {
@@ -6498,7 +6615,7 @@
             const inMonth = d.getMonth() === m;
             const isFuneral = funerals.has(ymd);
             const laneBottom = (d.getDate() % 2 === 0) ? 3 : 11;
-            const dumbbell = isFuneral ? `<span class="absolute" style="left:-3px;right:-3px;bottom:${laneBottom}px;height:6px"><span class="absolute rounded-full" style="left:0;right:0;top:50%;transform:translateY(-50%);height:2px;background:rgba(252,165,165,.7)"></span><span class="absolute rounded-full" style="left:0;top:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:#f87171"></span><span class="absolute rounded-full" style="right:0;top:50%;transform:translate(50%,-50%);width:6px;height:6px;background:#f87171"></span></span>` : '';
+            const dumbbell = isFuneral ? `<span class="absolute" style="left:-3px;${d.getDay() === 6 ? 'right:-3px' : 'width:calc(200% + 10px)'};bottom:${laneBottom}px;height:6px;z-index:5"><span class="absolute rounded-full" style="left:0;right:0;top:50%;transform:translateY(-50%);height:2px;background:rgba(252,165,165,.7)"></span><span class="absolute rounded-full" style="left:0;top:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:#f87171"></span><span class="absolute rounded-full" style="right:0;top:50%;transform:translate(50%,-50%);width:6px;height:6px;background:#f87171"></span></span>` : '';
             const evs = evByDate[ymd] || [];
             const dow = d.getDay();
             const rk = getRokuyo(d.getFullYear(), d.getMonth() + 1, d.getDate());
@@ -6590,7 +6707,7 @@
         const ev = window.V30.events.find(e => e.id === id);
         if (!ev) return;
         ev.locked = !ev.locked;
-        v30SyncEvent(ev);
+        v30SyncEvent(ev, 'toast', 'ロックの変更');
         v30RenderCalendar();
         showToast(ev.locked ? '予定をロックしました' : '予定のロックを解除しました', 'info');
     }
@@ -6668,7 +6785,7 @@
             if (!ev) { window.V30.editingEventId = null; v30CloseEventForm(); return; }
             if (typeof v18CanModify === 'function' && !v18CanModify(ev)) { showToast('編集できるのは投稿者と管理者だけです', 'error'); return; }
             Object.assign(ev, fields);
-            v30SyncEvent(ev);
+            v30SyncEvent(ev, 'modal', '更新');
             window.V30.editingEventId = null;
             v30CloseEventForm();
             v30RenderCalendar();
@@ -6684,7 +6801,7 @@
             locked: false
         });
         window.V30.events.push(ev);
-        v30SyncEvent(ev);
+        v30SyncEvent(ev, 'modal', '投稿');
         v30CloseEventForm();
         v30RenderCalendar();
         showToast('予定を投稿しました', 'success');
@@ -6696,9 +6813,16 @@
         if (!confirm('この予定を削除しますか？')) return;
         window.V30.events = window.V30.events.filter(e => e.id !== id);
         v30PersistEvents();
+        v30SavePendingDeletes([...v30LoadPendingDeletes(), String(id)]);
+        const onDeleteFail = () => {
+            showSyncErrorModal({ kind: 'カレンダーの予定', op: '削除', title: ev.title || '', dateLabel: formatJapaneseDate(ev.date), reason: syncFailReason() });
+            scheduleSyncRetry();
+        };
         postCatalogToGas({ action: 'deleteEvent', eventId: id }).then(res => {
-            if (!(res && res.status === 'ok')) showToast('削除の通信に失敗しました。通信状態の良い場所で再度お試しください', 'error');
-        }).catch(() => {});
+            if (res && res.status === 'ok') {
+                v30SavePendingDeletes(v30LoadPendingDeletes().filter(x => x !== String(id)));
+            } else { onDeleteFail(); }
+        }).catch(onDeleteFail);
         v30RenderCalendar();
         showToast('予定を削除しました', 'success');
     }
@@ -7228,14 +7352,15 @@
                 refreshConstCatalogSelect();
             }
             if (data && Array.isArray(data.events) && window.V30) {
-                const serverEvents = data.events.filter(e => e && e.id).map(e => { const c = Object.assign({}, e); delete c._pending; return c; });
+                const pendingDeleteIds = new Set(v30LoadPendingDeletes());
+                const serverEvents = data.events.filter(e => e && e.id && !pendingDeleteIds.has(String(e.id))).map(e => { const c = Object.assign({}, e); delete c._pending; return c; });
                 const serverIds = new Set(serverEvents.map(e => String(e.id)));
                 const pendingLocal = window.V30.events.filter(e => e && e._pending && !serverIds.has(String(e.id)));
                 window.V30.events = [...serverEvents, ...pendingLocal];
                 v30PersistEvents();
                 if (currentTab === 'calendar') v30RenderCalendar();
                 // 未共有の予定が残っていたら再送信する（通信が回復したタイミングで自動で共有される）
-                if (pendingLocal.length && navigator.onLine) pendingLocal.forEach(ev => { try { v30SyncEvent(ev); } catch (e) {} });
+                if (pendingLocal.length && navigator.onLine) { try { v30RetryPendingEvents(); } catch (e) {} }
             }
             if (data && Array.isArray(data.editLocks) && window.V18) {
                 window.V18.claims = data.editLocks;
@@ -7464,6 +7589,18 @@
             <button type="button" onclick="v26CloseSubNotice()" class="mt-4 px-6 py-2 bg-[#3d6b5e] hover:bg-[#2f5449] text-white rounded-md text-base font-bold">OK</button>
         </div>
     </div>
+    <!-- Ver3.10: 共有失敗の詳細ウィンドウ -->
+    <div id="sync-error-modal" class="hidden fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+        <div class="bg-[#fdfbf7] w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-xl sm:rounded-xl border border-red-300 shadow-xl p-4 space-y-3">
+            <h3 class="text-lg font-bold text-red-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>共有に失敗しました</h3>
+            <div id="sync-error-body" class="text-sm text-stone-800 leading-relaxed space-y-2"></div>
+            <div class="flex gap-2">
+                <button type="button" onclick="retryAllPendingSync()" class="flex-1 py-2.5 bg-[#8c672a] hover:bg-[#75551f] text-white rounded font-bold text-base transition"><i class="fa-solid fa-rotate-right mr-1"></i>今すぐ再送</button>
+                <button type="button" onclick="closeSyncErrorModal()" class="px-4 py-2.5 bg-white border border-stone-300 rounded font-bold text-base text-stone-700">閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Ver3.5: カレンダー日別詳細モーダル -->
     <div id="v30-day-modal" class="hidden fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
         <div class="bg-[#fdfbf7] w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-xl sm:rounded-xl border border-stone-300 shadow-xl p-4 space-y-3">
