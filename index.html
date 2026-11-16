@@ -173,12 +173,12 @@
 
             <div id="map-viewport" class="relative flex-1 bg-white rounded-lg border border-stone-300/90 shadow-xs overflow-hidden flex items-center justify-center">
                 <!-- ピン選択時のタイトルウィンドウ（右上に☓あり・クリックで詳細画面へ） -->
-                <div id="pin-title-popover" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-[#1f242d]/95 text-[#fdfbf7] rounded-lg shadow-xl border border-[#d6b779]/70 flex items-center overflow-hidden max-w-[92%]">
+                <div id="pin-title-popover" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-[#1f242d]/95 text-[#fdfbf7] rounded-lg shadow-xl border border-[#d6b779]/70 flex items-center overflow-hidden max-w-[92%]" style="width:92%">
                     <button type="button" onclick="openSelectedPinDetailModal()" class="px-3.5 py-2.5 flex items-center gap-2 text-left hover:bg-stone-800/90 transition min-w-0">
                         <span id="pin-popover-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
                         <div class="min-w-0">
-                            <div id="pin-popover-title" class="text-sm sm:text-base font-bold text-[#fdfbf7] break-all">エリア名</div>
-                            <div class="text-xs text-[#d6b779] whitespace-nowrap">もう一度ピンまたはここをタップで詳細を開く</div>
+                            <div id="pin-popover-title" class="text-base font-bold text-[#fdfbf7] break-all">エリア名</div>
+                            <div class="text-xs text-[#d6b779] leading-snug">もう一度ピンまたはここをタップで詳細を開く</div>
                         </div>
                         <i class="fa-solid fa-chevron-right text-sm text-[#d6b779] ml-1 shrink-0"></i>
                     </button>
@@ -240,7 +240,7 @@
                 <div id="eqsub-panel-kikaku">
                 <div class="bg-white p-3.5 rounded-md border border-stone-300 space-y-2.5">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h3 class="text-base sm:text-lg font-bold text-stone-800 flex items-center gap-2">
+                        <h3 class="text-lg sm:text-xl font-bold text-stone-800 flex items-center gap-2">
                             <i class="fa-solid fa-book-open text-[#8c672a]"></i>
                             <span>規格（祭壇パターン）</span>
                         </h3>
@@ -252,7 +252,7 @@
                             </button>
                         </div>
                     </div>
-                    <p class="text-[13px] sm:text-sm text-stone-800 leading-relaxed">ホール専用祭壇の構成パターンを登録しておくと、施工記録の作成時に「使用什器」へワンタップで反映できます。データは共同カタログ専用GASと自動同期され、他の端末・相手会社とも共有されます（バックアップ書き出しにも含まれます）。</p>
+                    <p class="text-sm text-stone-800 leading-relaxed">ホール専用祭壇の構成パターンを登録しておくと、施工記録の作成時に「使用什器」へワンタップで反映できます。データは共同カタログ専用GASと自動同期され、他の端末・相手会社とも共有されます（バックアップ書き出しにも含まれます）。</p>
                     <div id="catalog-list" class="space-y-2"></div>
                 </div>
 
@@ -303,8 +303,9 @@
                     <span class="text-red-500">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="text-blue-500">土</span>
                 </div>
                 <div id="v30-cal-grid" class="grid grid-cols-7 gap-1"></div>
+                <div id="v30-day-detail" class="hidden border-t border-stone-200 pt-3"></div>
                 <div class="border-t border-stone-200 pt-3">
-                    <h3 class="text-base font-bold text-stone-800 mb-2">予定一覧（新しい順）</h3>
+                    <h3 class="text-lg sm:text-xl font-bold text-stone-800 mb-2">予定一覧（新しい順）</h3>
                     <div id="v30-event-list" class="space-y-2"></div>
                 </div>
             </div>
@@ -1134,6 +1135,10 @@
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.0.1（2026/11/14）</div>
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.5（2026/11/16）</div>
+                            <p class="mt-0.5">・カレンダーの日付をタップすると、その日の予定が下に表示されるようにしました（予定が無い日も表示）。その画面から予定の追加・編集・ロック・削除ができます（権限は施工記録などと同じルール）<br>・文字サイズの統一感を見直し：見出しや絞り込み欄の大きさを役割ごとにそろえました<br>・館内図のピンの吹き出しが画面からはみ出す問題を修正（文章が折り返して全文表示されます）</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.4（2026/11/16）</div>
@@ -5319,15 +5324,15 @@
         bar.className = 'space-y-3';
         bar.innerHTML = `
             <div class="flex flex-wrap items-center gap-2">
-                <span id="v17-count" class="text-[13px] text-stone-500 font-bold"></span>
+                <span id="v17-count" class="text-sm text-stone-500 font-bold"></span>
             </div>
             <div class="flex flex-wrap items-center gap-2 bg-white border border-stone-200 rounded-md px-3 py-2.5">
-                <label class="text-[13px] font-bold text-stone-500">月 <select id="v17-filter-month" onchange="v17OnFilterChange()" class="ml-1 border border-stone-300 rounded px-2 py-1.5 text-sm bg-white"></select></label>
-                <label class="text-[13px] font-bold text-stone-500">担当 <select id="v17-filter-org" onchange="v17OnFilterChange()" class="ml-1 border border-stone-300 rounded px-2 py-1.5 text-sm bg-white">
+                <label class="text-sm font-bold text-stone-500">月 <select id="v17-filter-month" onchange="v17OnFilterChange()" class="ml-1 border border-stone-300 rounded px-2 py-1.5 text-sm bg-white"></select></label>
+                <label class="text-sm font-bold text-stone-500">担当 <select id="v17-filter-org" onchange="v17OnFilterChange()" class="ml-1 border border-stone-300 rounded px-2 py-1.5 text-sm bg-white">
                     <option value="ALL">すべて</option><option value="YK">ユー花園</option><option value="FI">フローリスト石原</option>
                 </select></label>
-                <label class="text-[13px] font-bold text-stone-500 flex-1 min-w-[140px]">検索 <input id="v17-filter-keyword" type="search" placeholder="規格・担当者・備考・什器名" oninput="v17OnFilterChange()" class="ml-1 w-full sm:w-auto border border-stone-300 rounded px-2 py-1.5 text-sm"></label>
-                <button type="button" onclick="v17ClearFilters()" class="px-2.5 py-1.5 text-[13px] font-bold text-stone-500 hover:text-stone-700 underline">条件をクリア</button>
+                <label class="text-sm font-bold text-stone-500 flex-1 min-w-[140px]">検索 <input id="v17-filter-keyword" type="search" placeholder="規格・担当者・備考・什器名" oninput="v17OnFilterChange()" class="ml-1 w-full sm:w-auto border border-stone-300 rounded px-2 py-1.5 text-sm"></label>
+                <button type="button" onclick="v17ClearFilters()" class="px-2.5 py-1.5 text-sm font-bold text-stone-500 hover:text-stone-700 underline">条件をクリア</button>
             </div>
             <div id="v17-calendar-wrap" class="hidden space-y-3">
                 <div class="bg-white border border-stone-200 rounded-md px-3 py-2.5 space-y-2">
@@ -6384,7 +6389,9 @@
         openStandards: new Set(),
         eqSub: 'kikaku',
         selectedSymbol: 'star-yellow',
-        eventDate: ''
+        eventDate: '',
+        selectedDay: '',
+        editingEventId: null
     };
     try { const evRaw = localStorage.getItem('mizuhodai_events_v1'); if (evRaw) { const p = JSON.parse(evRaw); if (Array.isArray(p)) window.V30.events = p; } } catch (e) {}
     const V30_SYMBOLS = [
@@ -6426,7 +6433,7 @@
             const dow = d.getDay();
             const rk = getRokuyo(d.getFullYear(), d.getMonth() + 1, d.getDate());
             const isToday = ymd === todayYmd;
-            cells += `<button type="button" onclick="v30OpenEventForm('${ymd}')" class="relative text-left rounded-md border ${inMonth ? 'border-stone-200 bg-white hover:bg-amber-50' : 'border-stone-100 bg-stone-50'} px-1 pt-1 pb-4 min-h-[64px] align-top overflow-hidden">
+            cells += `<button type="button" onclick="v30SelectDay('${ymd}')" class="relative text-left rounded-md border ${inMonth ? 'border-stone-200 bg-white hover:bg-amber-50' : 'border-stone-100 bg-stone-50'} ${window.V30.selectedDay === ymd ? 'ring-1 ring-[#8c672a] border-[#8c672a] bg-amber-50' : ''} px-1 pt-1 pb-4 min-h-[64px] align-top overflow-hidden">
                 <span class="text-xl font-bold ${dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-stone-700'}" ${isToday ? 'style="background:#8c672a;color:#fff;border-radius:9999px;padding:1px 6px;"' : ''}>${d.getDate()}</span>
                 <span class="block text-xs text-stone-500 leading-tight">${rk}</span>
                 ${prevFuneral ? '<span class="absolute bottom-[7px] left-0 w-1/2 h-[3px] bg-red-300/80 rounded-full"></span>' : ''}
@@ -6440,33 +6447,79 @@
         }
         grid.innerHTML = cells;
         v30RenderEventList();
+        v30RenderDayDetail();
+    }
+    function v30EventRowHtml(ev) {
+        const sym = v30SymbolOf(ev);
+        const canMod = (typeof v18CanModify === 'function') ? v18CanModify(ev) : (isCurrentUserAdmin() || (currentUser && ev.userId === currentUser.id));
+        const isAdmin = isCurrentUserAdmin();
+        const time = (ev.start || ev.end) ? ' ' + escapeHtml(ev.start || '') + (ev.start && ev.end ? '〜' : '') + escapeHtml(ev.end || '') : '';
+        return `<div class="flex gap-2 p-2.5 bg-white border ${ev.locked ? 'border-amber-400' : 'border-stone-200'} rounded-md">
+            <span style="color:${sym.color}" class="text-xl leading-none mt-0.5 shrink-0">${sym.char}</span>
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span class="font-bold text-base text-stone-800 break-words">${escapeHtml(ev.title || '')}</span>
+                    ${ev.label ? `<span class="px-1.5 py-0.5 bg-stone-100 border border-stone-200 rounded text-xs font-bold text-stone-600 whitespace-nowrap">${escapeHtml(ev.label)}</span>` : ''}
+                    ${ev.locked ? '<span class="px-1.5 py-0.5 bg-stone-800 text-white rounded text-xs font-bold whitespace-nowrap"><i class="fa-solid fa-lock mr-0.5"></i>ロック中</span>' : ''}
+                </div>
+                <p class="text-[13px] text-stone-800">${escapeHtml(formatJapaneseDate(ev.date))}${time}</p>
+                ${ev.content ? `<p class="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(ev.content)}</p>` : ''}
+                <p class="text-[13px] text-stone-700">投稿: ${escapeHtml(ev.author || '')}${ev.org ? '（' + escapeHtml(ev.org) + '）' : ''}</p>
+                ${(canMod || isAdmin) ? `<div class="flex flex-wrap gap-1.5 mt-1.5">
+                    ${canMod ? `<button type="button" onclick="v30EditEvent('${ev.id}')" class="px-2.5 py-1 bg-white border border-stone-300 rounded text-[13px] font-bold text-stone-700">編集</button>` : ''}
+                    ${isAdmin ? `<button type="button" onclick="v30ToggleEventLock('${ev.id}')" class="px-2.5 py-1 rounded border text-[13px] font-bold ${ev.locked ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-stone-700 border-stone-300'}"><i class="fa-solid ${ev.locked ? 'fa-lock' : 'fa-lock-open'} mr-0.5"></i>${ev.locked ? 'ロック中' : 'ロック'}</button>` : ''}
+                    ${canMod ? `<button type="button" onclick="v30DeleteEvent('${ev.id}')" class="px-2.5 py-1 bg-white border border-red-200 rounded text-[13px] font-bold text-red-600">削除</button>` : ''}
+                </div>` : ''}
+            </div>
+        </div>`;
     }
     function v30RenderEventList() {
         const box = document.getElementById('v30-event-list');
         if (!box) return;
         const evs = [...window.V30.events].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
         if (!evs.length) {
-            box.innerHTML = '<p class="text-sm text-stone-800">まだ予定がありません。カレンダーの日付をタップして追加できます。</p>';
+            box.innerHTML = '<p class="text-sm text-stone-800">まだ予定がありません。カレンダーの日付をタップすると、その日の予定が表示されます。</p>';
             return;
         }
-        box.innerHTML = evs.map(ev => {
-            const sym = v30SymbolOf(ev);
-            const canDel = isCurrentUserAdmin() || (currentUser && ev.userId === currentUser.id);
-            const time = (ev.start || ev.end) ? ' ' + escapeHtml(ev.start || '') + (ev.start && ev.end ? '〜' : '') + escapeHtml(ev.end || '') : '';
-            return `<div class="flex gap-2 p-2.5 bg-white border border-stone-200 rounded-md">
-                <span style="color:${sym.color}" class="text-xl leading-none mt-0.5 shrink-0">${sym.char}</span>
-                <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                        <span class="font-bold text-base text-stone-800 break-words">${escapeHtml(ev.title || '')}</span>
-                        ${ev.label ? `<span class="px-1.5 py-0.5 bg-stone-100 border border-stone-200 rounded text-xs font-bold text-stone-600 whitespace-nowrap">${escapeHtml(ev.label)}</span>` : ''}
-                    </div>
-                    <p class="text-[13px] text-stone-800">${escapeHtml(formatJapaneseDate(ev.date))}${time}</p>
-                    ${ev.content ? `<p class="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(ev.content)}</p>` : ''}
-                    <p class="text-[13px] text-stone-700">投稿: ${escapeHtml(ev.author || '')}${ev.org ? '（' + escapeHtml(ev.org) + '）' : ''}</p>
-                </div>
-                ${canDel ? `<button type="button" onclick="v30DeleteEvent('${ev.id}')" class="text-red-500 hover:text-red-700 text-sm font-bold shrink-0">削除</button>` : ''}
-            </div>`;
-        }).join('');
+        box.innerHTML = evs.map(ev => v30EventRowHtml(ev)).join('');
+    }
+    function v30SelectDay(ymd) {
+        window.V30.selectedDay = ymd;
+        v30RenderCalendar();
+    }
+    function v30RenderDayDetail() {
+        const box = document.getElementById('v30-day-detail');
+        if (!box) return;
+        const ymd = window.V30.selectedDay;
+        if (!ymd) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        const evs = window.V30.events.filter(ev => ev.date === ymd)
+            .sort((a, b) => String(a.start || '99').localeCompare(String(b.start || '99')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+        const isFuneral = v30FuneralDates().has(ymd);
+        box.classList.remove('hidden');
+        box.innerHTML = `
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <h3 class="text-lg font-bold text-stone-800">${escapeHtml(formatJapaneseDate(ymd))} の予定</h3>
+                <button type="button" onclick="v30OpenEventForm('${ymd}')" class="px-3 py-1.5 bg-[#8c672a] hover:bg-[#75551f] text-white rounded text-sm font-bold transition whitespace-nowrap"><i class="fa-solid fa-plus mr-1"></i>予定を追加</button>
+            </div>
+            ${isFuneral ? '<p class="text-sm text-red-600 font-bold mb-2">この日は葬儀の施工日です（施工記録と連動）</p>' : ''}
+            ${evs.length ? `<div class="space-y-2">${evs.map(ev => v30EventRowHtml(ev)).join('')}</div>` : '<p class="text-sm text-stone-800">この日の予定はまだありません。</p>'}
+        `;
+    }
+    function v30ToggleEventLock(id) {
+        if (!isCurrentUserAdmin()) return;
+        const ev = window.V30.events.find(e => e.id === id);
+        if (!ev) return;
+        ev.locked = !ev.locked;
+        v30PersistEvents();
+        try { postCatalogToGas({ action: 'upsertEvent', event: ev }); } catch (e) {}
+        v30RenderCalendar();
+        showToast(ev.locked ? '予定をロックしました' : '予定のロックを解除しました', 'info');
+    }
+    function v30EditEvent(id) {
+        const ev = window.V30.events.find(e => e.id === id);
+        if (!ev) return;
+        if (typeof v18CanModify === 'function' && !v18CanModify(ev)) { showToast('編集できるのは投稿者と管理者だけです', 'error'); return; }
+        v30OpenEventForm(ev.date, id);
     }
     function v30MoveMonth(delta) {
         let y = window.V30.calYear, m = window.V30.calMonth + delta;
@@ -6485,9 +6538,11 @@
         box.innerHTML = V30_SYMBOLS.map(s => `<button type="button" onclick="v30PickSymbol('${s.key}')" class="w-10 h-10 rounded-md border ${window.V30.selectedSymbol === s.key ? 'border-[#8c672a] bg-amber-50' : 'border-stone-300 bg-white'} text-2xl leading-none" style="color:${s.color}">${s.char}</button>`).join('');
     }
     function v30PickSymbol(key) { window.V30.selectedSymbol = key; v30RenderSymbolPicker(); }
-    function v30OpenEventForm(ymd) {
+    function v30OpenEventForm(ymd, eventId) {
         window.V30.eventDate = ymd;
-        window.V30.selectedSymbol = 'star-yellow';
+        window.V30.editingEventId = eventId || null;
+        const ev = eventId ? window.V30.events.find(e => e.id === eventId) : null;
+        window.V30.selectedSymbol = ev ? (ev.symbol || 'star-yellow') : 'star-yellow';
         const lbl = document.getElementById('v30-event-date-label');
         if (lbl) lbl.textContent = formatJapaneseDate(ymd);
         const note = document.getElementById('v30-event-funeral-note');
@@ -6495,7 +6550,16 @@
             if (v30FuneralDates().has(ymd)) { note.textContent = 'この日は葬儀の施工日です（施工記録と連動しているため、ここでは変更できません）。'; note.classList.remove('hidden'); }
             else note.classList.add('hidden');
         }
-        ['v30-event-label', 'v30-event-title', 'v30-event-content', 'v30-event-start', 'v30-event-end'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+        setVal('v30-event-label', ev ? ev.label : '');
+        setVal('v30-event-title', ev ? ev.title : '');
+        setVal('v30-event-content', ev ? ev.content : '');
+        setVal('v30-event-start', ev ? ev.start : '');
+        setVal('v30-event-end', ev ? ev.end : '');
+        const titleEl = document.getElementById('v30-event-modal-title');
+        if (titleEl) titleEl.innerHTML = '<i class="fa-regular fa-calendar text-[#8c672a]"></i>' + (ev ? '予定を編集' : '予定を追加');
+        const saveBtn = document.getElementById('v30-event-save-btn');
+        if (saveBtn) saveBtn.textContent = ev ? '更新する' : '投稿する';
         v30RenderSymbolPicker();
         const modal = document.getElementById('v30-event-modal');
         if (modal) modal.classList.remove('hidden');
@@ -6510,20 +6574,37 @@
         if (!title) { showToast('タイトルを入力してください', 'error'); return; }
         let label = document.getElementById('v30-event-label').value.trim();
         if (!label && window.V30.selectedSymbol === 'star-yellow') label = 'イベント';
-        const ev = {
-            id: 'ev_' + Date.now(),
+        const fields = {
             date: window.V30.eventDate,
             symbol: window.V30.selectedSymbol,
             label: label,
             title: title,
             start: document.getElementById('v30-event-start').value || '',
             end: document.getElementById('v30-event-end').value || '',
-            content: document.getElementById('v30-event-content').value.trim(),
+            content: document.getElementById('v30-event-content').value.trim()
+        };
+        const editId = window.V30.editingEventId;
+        if (editId) {
+            const ev = window.V30.events.find(e => e.id === editId);
+            if (!ev) { window.V30.editingEventId = null; v30CloseEventForm(); return; }
+            if (typeof v18CanModify === 'function' && !v18CanModify(ev)) { showToast('編集できるのは投稿者と管理者だけです', 'error'); return; }
+            Object.assign(ev, fields);
+            v30PersistEvents();
+            try { postCatalogToGas({ action: 'upsertEvent', event: ev }); } catch (e) {}
+            window.V30.editingEventId = null;
+            v30CloseEventForm();
+            v30RenderCalendar();
+            showToast('予定を更新しました', 'success');
+            return;
+        }
+        const ev = Object.assign({}, fields, {
+            id: 'ev_' + Date.now(),
             userId: currentUser ? currentUser.id : '',
             author: currentUser ? currentUser.name : '',
             org: currentUser ? currentUser.org : '',
-            createdAt: new Date().toISOString()
-        };
+            createdAt: new Date().toISOString(),
+            locked: false
+        });
         window.V30.events.push(ev);
         v30PersistEvents();
         try { postCatalogToGas({ action: 'upsertEvent', event: ev }); } catch (e) {}
@@ -6534,7 +6615,7 @@
     function v30DeleteEvent(id) {
         const ev = window.V30.events.find(e => e.id === id);
         if (!ev) return;
-        if (!isCurrentUserAdmin() && !(currentUser && ev.userId === currentUser.id)) { showToast('削除できるのは投稿者と管理者だけです', 'error'); return; }
+        if (typeof v18CanModify === 'function' ? !v18CanModify(ev) : (!isCurrentUserAdmin() && !(currentUser && ev.userId === currentUser.id))) { showToast('削除できるのは投稿者と管理者だけです', 'error'); return; }
         if (!confirm('この予定を削除しますか？')) return;
         window.V30.events = window.V30.events.filter(e => e.id !== id);
         v30PersistEvents();
@@ -7303,7 +7384,7 @@
     <div id="v30-event-modal" class="hidden fixed inset-0 z-[95] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
         <div class="bg-[#fdfbf7] w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-xl sm:rounded-xl border border-stone-300 shadow-xl p-4 space-y-3">
             <div class="flex items-center justify-between">
-                <h3 class="font-bold text-stone-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-[#8c672a]"></i>予定を追加</h3>
+                <h3 id="v30-event-modal-title" class="text-lg font-bold text-stone-800 flex items-center gap-2"><i class="fa-regular fa-calendar text-[#8c672a]"></i>予定を追加</h3>
                 <button type="button" onclick="v30CloseEventForm()" class="text-stone-400 hover:text-stone-600 text-xl px-2">&times;</button>
             </div>
             <p id="v30-event-date-label" class="text-base font-bold text-stone-700"></p>
@@ -7335,7 +7416,7 @@
                 <textarea id="v30-event-content" rows="3" class="w-full p-2 bg-white border border-stone-300 rounded text-base"></textarea>
             </div>
             <div class="flex gap-2 pt-1">
-                <button type="button" onclick="v30SaveEvent()" class="flex-1 py-2.5 bg-[#8c672a] hover:bg-[#75551f] text-white rounded font-bold text-base transition">投稿する</button>
+                <button type="button" id="v30-event-save-btn" onclick="v30SaveEvent()" class="flex-1 py-2.5 bg-[#8c672a] hover:bg-[#75551f] text-white rounded font-bold text-base transition">投稿する</button>
                 <button type="button" onclick="v30CloseEventForm()" class="px-4 py-2.5 bg-white border border-stone-300 rounded font-bold text-base text-stone-600">閉じる</button>
             </div>
         </div>
