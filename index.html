@@ -309,7 +309,7 @@
                     <h2 id="v30-cal-title" class="text-lg sm:text-xl font-bold text-stone-800"></h2>
                     <button type="button" onclick="v30MoveMonth(1)" class="px-3 py-1.5 bg-white border border-stone-300 rounded text-sm font-bold text-stone-700">翌月 〉</button>
                     <button type="button" onclick="v30GoToday()" class="px-3 py-1.5 bg-white border border-stone-300 rounded text-sm font-bold text-stone-700">今日</button>
-                    <span class="ml-auto text-[13px] text-stone-500 whitespace-nowrap"><span class="text-red-500 font-bold">●</span>=葬儀</span>
+                    <span class="ml-auto text-[13px] text-stone-500 whitespace-nowrap"><span class="text-red-500 font-bold">●</span>=施工日</span>
                 </div>
                 <div class="grid grid-cols-7 text-center text-[13px] font-bold text-stone-500">
                     <span class="text-red-500">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="text-blue-500">土</span>
@@ -1146,6 +1146,10 @@
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.0.1（2026/11/14）</div>
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.11（2026/11/16）</div>
+                            <p class="mt-0.5">・カレンダーの施工日マークをシンプルな赤丸に戻しました。凡例も「●=施工日」に変更<br>・日付の中のマーク置き場を左右に分けました。左が施工日の赤丸、右が予定のマークです。予定が複数ある日は、最初の予定のマークだけを表示します</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.10（2026/11/16）</div>
@@ -6614,19 +6618,19 @@
             const ymd = v30Ymd(d);
             const inMonth = d.getMonth() === m;
             const isFuneral = funerals.has(ymd);
-            const laneBottom = (d.getDate() % 2 === 0) ? 3 : 11;
-            const dumbbell = isFuneral ? `<span class="absolute" style="left:-3px;${d.getDay() === 6 ? 'right:-3px' : 'width:calc(200% + 10px)'};bottom:${laneBottom}px;height:6px;z-index:5"><span class="absolute rounded-full" style="left:0;right:0;top:50%;transform:translateY(-50%);height:2px;background:rgba(252,165,165,.7)"></span><span class="absolute rounded-full" style="left:0;top:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:#f87171"></span><span class="absolute rounded-full" style="right:0;top:50%;transform:translate(50%,-50%);width:6px;height:6px;background:#f87171"></span></span>` : '';
             const evs = evByDate[ymd] || [];
+            const firstEv = evs.length ? [...evs].sort((a, b) => String(a.start || '99').localeCompare(String(b.start || '99')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')))[0] : null;
             const dow = d.getDay();
             const rk = getRokuyo(d.getFullYear(), d.getMonth() + 1, d.getDate());
             const isToday = ymd === todayYmd;
             cells += `<button type="button" onclick="v30SelectDay('${ymd}')" class="relative text-left rounded-md border ${inMonth ? 'border-stone-200 bg-white hover:bg-amber-50' : 'border-stone-100 bg-stone-50'} ${window.V30.selectedDay === ymd ? 'ring-1 ring-[#8c672a] border-[#8c672a] bg-amber-50' : ''} px-1 pt-1 pb-4 min-h-[64px] align-top overflow-hidden">
                 <span class="text-xl font-bold ${dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-stone-700'}" ${isToday ? 'style="background:#8c672a;color:#fff;border-radius:9999px;padding:1px 6px;"' : ''}>${d.getDate()}</span>
                 <span class="block text-xs text-stone-500 leading-tight">${rk}</span>
-                ${dumbbell}
-                <span class="absolute left-1 bottom-0.5 flex items-center gap-0.5">
-                    ${evs.slice(0, 3).map(ev => `<span style="color:${v30SymbolOf(ev).color};text-shadow:-1px 0 0 #fff,1px 0 0 #fff,0 -1px 0 #fff,0 1px 0 #fff,0 0 4px #fff" class="text-[13px] leading-none">${v30SymbolOf(ev).char}</span>`).join('')}
-                    ${evs.length > 3 ? `<span class="text-[11px] text-stone-400">+${evs.length - 3}</span>` : ''}
+                <span class="absolute left-1 bottom-0.5 flex items-center">
+                    ${isFuneral ? '<span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>' : ''}
+                </span>
+                <span class="absolute right-1 bottom-0.5 flex items-center">
+                    ${firstEv ? `<span style="color:${v30SymbolOf(firstEv).color};text-shadow:-1px 0 0 #fff,1px 0 0 #fff,0 -1px 0 #fff,0 1px 0 #fff,0 0 4px #fff" class="text-[13px] leading-none">${v30SymbolOf(firstEv).char}</span>` : ''}
                 </span>
             </button>`;
         }
