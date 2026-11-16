@@ -42,6 +42,19 @@
             transform: translate(-50%, -100%) scale(1.15);
             z-index: 30;
         }
+        /* 選択中のピンを際立たせる */
+        .map-needle-pin.pin-selected {
+            transform: translate(-50%, -100%) scale(1.4);
+            z-index: 40;
+        }
+        .map-needle-pin.pin-selected .map-needle-body {
+            animation-duration: 0.9s;
+            filter: drop-shadow(0 0 5px rgba(217,164,65,0.95)) drop-shadow(0 0 2px rgba(217,164,65,0.9));
+        }
+        .map-needle-pin.pin-selected .map-needle-tip-ring {
+            animation-duration: 0.8s;
+            box-shadow: 0 0 0 2px rgba(217,164,65,0.85);
+        }
         .map-needle-body {
             animation: needle-bob 2.2s ease-in-out infinite;
         }
@@ -174,7 +187,7 @@
             <div id="map-viewport" class="relative flex-1 bg-white rounded-lg border border-stone-300/90 shadow-xs overflow-hidden flex items-center justify-center">
                 <!-- ピン選択時のタイトルウィンドウ（右上に☓あり・クリックで詳細画面へ） -->
                 <div id="pin-title-popover" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-[#1f242d]/95 text-[#fdfbf7] rounded-lg shadow-xl border border-[#d6b779]/70 flex items-center overflow-hidden max-w-[92%]" style="width:92%">
-                    <button type="button" onclick="openSelectedPinDetailModal()" class="px-3.5 py-2.5 flex items-center gap-2 text-left hover:bg-stone-800/90 transition min-w-0">
+                    <button type="button" onclick="openSelectedPinDetailModal()" class="flex-1 px-3.5 py-2.5 flex items-center gap-2 text-left hover:bg-stone-800/90 transition min-w-0">
                         <span id="pin-popover-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
                         <div class="min-w-0">
                             <div id="pin-popover-title" class="text-lg font-bold text-[#fdfbf7] break-all leading-snug">エリア名</div>
@@ -1133,6 +1146,10 @@
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.0.1（2026/11/14）</div>
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.7（2026/11/16）</div>
+                            <p class="mt-0.5">・カレンダーの予定が投稿できないことがある問題を修正しました（通信に失敗しても予定が消えず、失敗したことが表示され、通信が回復したときに自動で共有し直します）<br>・館内図でタップしたピンが大きく光って分かるようにしました。ピンの吹き出しの閉じるボタンも右端に寄せました<br>・施工記録のカードに「投稿者」と「規格」を担当と同じ枠付きの表示で追加しました</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.6（2026/11/16）</div>
@@ -3429,8 +3446,9 @@
                 return `
                     <button type="button"
                         onclick="handlePinClick(event, '${escapeHtml(id)}')"
+                        data-area-id="${escapeHtml(id)}"
                         style="left: ${area.pinX}%; top: ${area.pinY}%; width: ${hitWidth}px; height: ${pinHeight}px; ${editOutline}"
-                        class="map-needle-pin pointer-events-auto absolute flex items-end justify-center transition-transform cursor-pointer group focus:outline-none"
+                        class="map-needle-pin${currentSelectedAreaId === id ? ' pin-selected' : ''} pointer-events-auto absolute flex items-end justify-center transition-transform cursor-pointer group focus:outline-none"
                         title="${escapeHtml(area.title)}">
                         <span style="width: ${tipRingSize}px; height: ${tipRingSize}px; background-color: ${bgColor};" class="map-needle-tip-ring"></span>
                         <span style="background-color: ${bgColor};" class="map-needle-tip-dot"></span>
@@ -3685,6 +3703,9 @@
         function selectMapArea(areaId, xPercent, yPercent) {
             playBeepSound();
             currentSelectedAreaId = areaId;
+            document.querySelectorAll('.map-needle-pin.pin-selected').forEach(el => el.classList.remove('pin-selected'));
+            const pinEl = document.querySelector(`.map-needle-pin[data-area-id="${areaId}"]`);
+            if (pinEl) pinEl.classList.add('pin-selected');
             const area = areaData[areaId];
             if (!area) return;
 
@@ -3709,6 +3730,7 @@
         function resetMapZoom(isBackAction = false) {
             isMapZoomed = false;
             currentSelectedAreaId = null;
+            document.querySelectorAll('.map-needle-pin.pin-selected').forEach(el => el.classList.remove('pin-selected'));
             const inner = document.getElementById('map-container-inner');
             if (inner) inner.style.transform = 'scale(1)';
             const popover = document.getElementById('pin-title-popover');
@@ -4464,14 +4486,13 @@
                         <div class="p-4 flex-1 flex flex-col justify-between space-y-2">
                             <div>
                                 ${v21ThumbStripHtml(rec)}
-                                <div class="flex flex-wrap items-center justify-between gap-1 text-sm text-stone-500 mb-1.5">
-                                    <div class="flex flex-wrap items-center gap-1.5">
-                                        <span class="font-bold text-stone-700 whitespace-nowrap">${escapeHtml(formatJapaneseDate(rec.date))}</span>
-                                        <span class="font-bold text-stone-800 whitespace-nowrap">${escapeHtml(rec.author || '')}</span>
-                                        ${getOrgBadgeHtml(rec.org)}
-                                        ${getAssigneeBadgeHtml(rec.date)}
-                                    </div>
-                                    <span class="font-mono bg-stone-100 px-2 py-0.5 rounded border border-stone-200">${escapeHtml(rec.code)}</span>
+                                <div class="text-sm text-stone-500 mb-1.5">
+                                    <span class="font-bold text-stone-700 whitespace-nowrap">${escapeHtml(formatJapaneseDate(rec.date))}</span>
+                                </div>
+                                <div class="flex flex-col items-start gap-1 mb-1.5">
+                                    ${getAssigneeBadgeHtml(rec.date)}
+                                    <span class="px-2 py-0.5 border bg-stone-100 text-stone-900 border-stone-300 text-xs font-bold rounded whitespace-nowrap inline-flex items-center gap-1.5">投稿者: ${escapeHtml(rec.author || '')} ${getOrgBadgeHtml(rec.org)}</span>
+                                    <span class="px-2 py-0.5 border bg-amber-100/80 text-amber-900 border-amber-300/80 text-xs font-bold rounded whitespace-nowrap">規格: ${escapeHtml(rec.code)}</span>
                                 </div>
                                 <p class="text-base text-stone-800 leading-relaxed">${escapeHtml(rec.notes)}</p>
                             </div>
@@ -6415,6 +6436,20 @@
     ];
     function v30SymbolOf(ev) { return V30_SYMBOLS.find(s => s.key === (ev && ev.symbol)) || V30_SYMBOLS[0]; }
     function v30PersistEvents() { try { localStorage.setItem('mizuhodai_events_v1', JSON.stringify(window.V30.events)); } catch (e) {} }
+    // 共有が確認できるまで _pending を付け、失敗したら知らせる（端末内の予定は消さない）
+    function v30SyncEvent(ev) {
+        const payload = Object.assign({}, ev);
+        delete payload._pending;
+        ev._pending = true;
+        v30PersistEvents();
+        postCatalogToGas({ action: 'upsertEvent', event: payload }).then(res => {
+            if (res && res.status === 'ok') {
+                if (ev._pending) { delete ev._pending; v30PersistEvents(); }
+            } else {
+                showToast('通信に失敗しました。予定はこの端末に保存されていますが、まだ共有されていません', 'error');
+            }
+        }).catch(() => { showToast('通信に失敗しました。予定はこの端末に保存されていますが、まだ共有されていません', 'error'); });
+    }
     function v30Ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
     function v30FuneralDates() {
         const s = new Set();
@@ -6533,8 +6568,7 @@
         const ev = window.V30.events.find(e => e.id === id);
         if (!ev) return;
         ev.locked = !ev.locked;
-        v30PersistEvents();
-        try { postCatalogToGas({ action: 'upsertEvent', event: ev }); } catch (e) {}
+        v30SyncEvent(ev);
         v30RenderCalendar();
         showToast(ev.locked ? '予定をロックしました' : '予定のロックを解除しました', 'info');
     }
@@ -6612,8 +6646,7 @@
             if (!ev) { window.V30.editingEventId = null; v30CloseEventForm(); return; }
             if (typeof v18CanModify === 'function' && !v18CanModify(ev)) { showToast('編集できるのは投稿者と管理者だけです', 'error'); return; }
             Object.assign(ev, fields);
-            v30PersistEvents();
-            try { postCatalogToGas({ action: 'upsertEvent', event: ev }); } catch (e) {}
+            v30SyncEvent(ev);
             window.V30.editingEventId = null;
             v30CloseEventForm();
             v30RenderCalendar();
@@ -6629,8 +6662,7 @@
             locked: false
         });
         window.V30.events.push(ev);
-        v30PersistEvents();
-        try { postCatalogToGas({ action: 'upsertEvent', event: ev }); } catch (e) {}
+        v30SyncEvent(ev);
         v30CloseEventForm();
         v30RenderCalendar();
         showToast('予定を投稿しました', 'success');
@@ -6642,7 +6674,9 @@
         if (!confirm('この予定を削除しますか？')) return;
         window.V30.events = window.V30.events.filter(e => e.id !== id);
         v30PersistEvents();
-        try { postCatalogToGas({ action: 'deleteEvent', eventId: id }); } catch (e) {}
+        postCatalogToGas({ action: 'deleteEvent', eventId: id }).then(res => {
+            if (!(res && res.status === 'ok')) showToast('削除の通信に失敗しました。通信状態の良い場所で再度お試しください', 'error');
+        }).catch(() => {});
         v30RenderCalendar();
         showToast('予定を削除しました', 'success');
     }
@@ -7172,9 +7206,14 @@
                 refreshConstCatalogSelect();
             }
             if (data && Array.isArray(data.events) && window.V30) {
-                window.V30.events = data.events.filter(e => e && e.id);
+                const serverEvents = data.events.filter(e => e && e.id).map(e => { const c = Object.assign({}, e); delete c._pending; return c; });
+                const serverIds = new Set(serverEvents.map(e => String(e.id)));
+                const pendingLocal = window.V30.events.filter(e => e && e._pending && !serverIds.has(String(e.id)));
+                window.V30.events = [...serverEvents, ...pendingLocal];
                 v30PersistEvents();
                 if (currentTab === 'calendar') v30RenderCalendar();
+                // 未共有の予定が残っていたら再送信する（通信が回復したタイミングで自動で共有される）
+                if (pendingLocal.length && navigator.onLine) pendingLocal.forEach(ev => { try { v30SyncEvent(ev); } catch (e) {} });
             }
             if (data && Array.isArray(data.editLocks) && window.V18) {
                 window.V18.claims = data.editLocks;
