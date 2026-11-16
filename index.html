@@ -177,10 +177,9 @@
                     <button type="button" onclick="openSelectedPinDetailModal()" class="px-3.5 py-2.5 flex items-center gap-2 text-left hover:bg-stone-800/90 transition min-w-0">
                         <span id="pin-popover-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
                         <div class="min-w-0">
-                            <div id="pin-popover-title" class="text-base font-bold text-[#fdfbf7] break-all">エリア名</div>
-                            <div class="text-xs text-[#d6b779] leading-snug">もう一度ピンまたはここをタップで詳細を開く</div>
+                            <div id="pin-popover-title" class="text-lg font-bold text-[#fdfbf7] break-all leading-snug">エリア名</div>
+                            <div class="text-[11px] text-[#d6b779] leading-snug">ピンかここをタップで開く</div>
                         </div>
-                        <i class="fa-solid fa-chevron-right text-sm text-[#d6b779] ml-1 shrink-0"></i>
                     </button>
                     <button type="button" onclick="closePinTitlePopover()" class="px-3 py-2.5 self-stretch flex items-center justify-center text-stone-300 hover:text-white hover:bg-red-900/60 border-l border-stone-700 transition shrink-0" title="閉じて全体図へ戻る" aria-label="閉じる">
                         <i class="fa-solid fa-xmark text-lg"></i>
@@ -303,7 +302,6 @@
                     <span class="text-red-500">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="text-blue-500">土</span>
                 </div>
                 <div id="v30-cal-grid" class="grid grid-cols-7 gap-1"></div>
-                <div id="v30-day-detail" class="hidden border-t border-stone-200 pt-3"></div>
                 <div class="border-t border-stone-200 pt-3">
                     <h3 class="text-lg sm:text-xl font-bold text-stone-800 mb-2">予定一覧（新しい順）</h3>
                     <div id="v30-event-list" class="space-y-2"></div>
@@ -1135,6 +1133,10 @@
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.0.1（2026/11/14）</div>
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.6（2026/11/16）</div>
+                            <p class="mt-0.5">・カレンダーの日付タップで、その日の予定を前面のウィンドウで表示するように変更しました（追加・編集・ロック・削除はそのまま可能）<br>・館内図のピンの吹き出しを簡潔にしました（エリア名を大きく、案内文は「ピンかここをタップで開く」だけに短縮）</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.5（2026/11/16）</div>
@@ -3154,6 +3156,15 @@
                 v30CloseEventForm();
                 window.__v31BackClosing = false;
                 v31SilentRemove('modal:event');
+                return;
+            }
+
+            const dayModal = document.getElementById('v30-day-modal');
+            if (dayModal && !dayModal.classList.contains('hidden')) {
+                window.__v31BackClosing = true;
+                v30CloseDayModal();
+                window.__v31BackClosing = false;
+                v31SilentRemove('modal:daydetail');
                 return;
             }
 
@@ -6447,7 +6458,7 @@
         }
         grid.innerHTML = cells;
         v30RenderEventList();
-        v30RenderDayDetail();
+        v30RenderDayModal();
     }
     function v30EventRowHtml(ev) {
         const sym = v30SymbolOf(ev);
@@ -6486,24 +6497,36 @@
     function v30SelectDay(ymd) {
         window.V30.selectedDay = ymd;
         v30RenderCalendar();
+        v30OpenDayModal();
     }
-    function v30RenderDayDetail() {
-        const box = document.getElementById('v30-day-detail');
-        if (!box) return;
+    function v30RenderDayModal() {
+        const modal = document.getElementById('v30-day-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
         const ymd = window.V30.selectedDay;
-        if (!ymd) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        if (!ymd) return;
+        const titleEl = document.getElementById('v30-day-modal-title');
+        if (titleEl) titleEl.textContent = formatJapaneseDate(ymd) + ' の予定';
+        const body = document.getElementById('v30-day-modal-body');
+        if (!body) return;
         const evs = window.V30.events.filter(ev => ev.date === ymd)
             .sort((a, b) => String(a.start || '99').localeCompare(String(b.start || '99')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
         const isFuneral = v30FuneralDates().has(ymd);
-        box.classList.remove('hidden');
-        box.innerHTML = `
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <h3 class="text-lg font-bold text-stone-800">${escapeHtml(formatJapaneseDate(ymd))} の予定</h3>
-                <button type="button" onclick="v30OpenEventForm('${ymd}')" class="px-3 py-1.5 bg-[#8c672a] hover:bg-[#75551f] text-white rounded text-sm font-bold transition whitespace-nowrap"><i class="fa-solid fa-plus mr-1"></i>予定を追加</button>
-            </div>
-            ${isFuneral ? '<p class="text-sm text-red-600 font-bold mb-2">この日は葬儀の施工日です（施工記録と連動）</p>' : ''}
-            ${evs.length ? `<div class="space-y-2">${evs.map(ev => v30EventRowHtml(ev)).join('')}</div>` : '<p class="text-sm text-stone-800">この日の予定はまだありません。</p>'}
+        body.innerHTML = `
+            ${isFuneral ? '<p class="text-sm text-red-600 font-bold">この日は葬儀の施工日です（施工記録と連動）</p>' : ''}
+            ${evs.length ? evs.map(ev => v30EventRowHtml(ev)).join('') : '<p class="text-sm text-stone-800 py-2">この日の予定はまだありません。</p>'}
         `;
+    }
+    function v30OpenDayModal() {
+        const modal = document.getElementById('v30-day-modal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        v30RenderDayModal();
+        pushNavState('modal:daydetail');
+    }
+    function v30CloseDayModal() {
+        const modal = document.getElementById('v30-day-modal');
+        if (modal) modal.classList.add('hidden');
+        if (!window.__v31BackClosing && navigationHistory[navigationHistory.length - 1] === 'modal:daydetail') navigationHistory.pop();
     }
     function v30ToggleEventLock(id) {
         if (!isCurrentUserAdmin()) return;
@@ -7380,6 +7403,18 @@
             <button type="button" onclick="v26CloseSubNotice()" class="mt-4 px-6 py-2 bg-[#3d6b5e] hover:bg-[#2f5449] text-white rounded-md text-base font-bold">OK</button>
         </div>
     </div>
+    <!-- Ver3.5: カレンダー日別詳細モーダル -->
+    <div id="v30-day-modal" class="hidden fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+        <div class="bg-[#fdfbf7] w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-xl sm:rounded-xl border border-stone-300 shadow-xl p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2">
+                <h3 id="v30-day-modal-title" class="text-lg font-bold text-stone-800"></h3>
+                <button type="button" onclick="v30CloseDayModal()" class="text-stone-400 hover:text-stone-600 text-xl px-2">&times;</button>
+            </div>
+            <div id="v30-day-modal-body" class="space-y-2"></div>
+            <button type="button" onclick="v30OpenEventForm(window.V30.selectedDay)" class="w-full py-2.5 bg-[#8c672a] hover:bg-[#75551f] text-white rounded font-bold text-base transition"><i class="fa-solid fa-plus mr-1"></i>予定を追加</button>
+        </div>
+    </div>
+
     <!-- Ver3.0: カレンダー予定フォーム -->
     <div id="v30-event-modal" class="hidden fixed inset-0 z-[95] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
         <div class="bg-[#fdfbf7] w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-xl sm:rounded-xl border border-stone-300 shadow-xl p-4 space-y-3">
