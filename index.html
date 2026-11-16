@@ -177,7 +177,7 @@
                     <button type="button" onclick="openSelectedPinDetailModal()" class="px-3.5 py-2.5 flex items-center gap-2 text-left hover:bg-stone-800/90 transition min-w-0">
                         <span id="pin-popover-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
                         <div class="min-w-0">
-                            <div id="pin-popover-title" class="text-xs sm:text-sm font-bold text-[#fdfbf7] truncate">エリア名</div>
+                            <div id="pin-popover-title" class="text-xs sm:text-sm font-bold text-[#fdfbf7] break-all">エリア名</div>
                             <div class="text-[10px] text-[#d6b779] whitespace-nowrap">もう一度ピンまたはここをタップで詳細を開く</div>
                         </div>
                         <i class="fa-solid fa-chevron-right text-xs text-[#d6b779] ml-1 shrink-0"></i>
@@ -252,7 +252,7 @@
                             </button>
                         </div>
                     </div>
-                    <p class="text-[11px] sm:text-xs text-stone-500 leading-relaxed">ホール専用祭壇の構成パターンを登録しておくと、施工記録の作成時に「使用什器」へワンタップで反映できます。データは共同カタログ専用GASと自動同期され、他の端末・相手会社とも共有されます（バックアップ書き出しにも含まれます）。</p>
+                    <p class="text-[11px] sm:text-xs text-stone-800 leading-relaxed">ホール専用祭壇の構成パターンを登録しておくと、施工記録の作成時に「使用什器」へワンタップで反映できます。データは共同カタログ専用GASと自動同期され、他の端末・相手会社とも共有されます（バックアップ書き出しにも含まれます）。</p>
                     <div id="catalog-list" class="space-y-2"></div>
                 </div>
 
@@ -265,7 +265,7 @@
                             <i class="fa-solid fa-sitemap text-[#8c672a]"></i>
                             <span>什器・花器 階層ツリー台帳</span>
                         </h2>
-                        <p class="text-xs text-stone-500 mt-0.5 leading-relaxed">親グループ＞パーツ＞個体の階層で管理。パーツをタップして開閉できます。</p>
+                        <p class="text-xs text-stone-800 mt-0.5 leading-relaxed">親グループ＞パーツ＞個体の階層で管理。パーツをタップして開閉できます。</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <button type="button" onclick="toggleAllEquipmentTrees(true)" class="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-md text-xs font-bold transition whitespace-nowrap">
@@ -321,7 +321,7 @@
             <div class="px-4 sm:px-5 py-3.5 bg-[#1f242d] text-[#fdfbf7] flex items-center justify-between border-b border-amber-700/40">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <span id="modal-area-badge" class="w-3 h-3 rounded-full bg-amber-400 shrink-0"></span>
-                    <h3 id="modal-area-title" class="text-base sm:text-lg font-bold tracking-wide truncate">エリア名</h3>
+                    <h3 id="modal-area-title" class="text-base sm:text-lg font-bold tracking-wide break-all">エリア名</h3>
                 </div>
                 <button type="button" onclick="closeAreaModal()" class="p-1.5 text-stone-300 hover:text-white rounded-md shrink-0">
                     <i class="fa-solid fa-xmark text-xl"></i>
@@ -551,7 +551,7 @@
             <div class="px-4 sm:px-5 py-3.5 bg-[#1f242d] text-[#fdfbf7] flex items-center justify-between border-b border-amber-700/40">
                 <div class="min-w-0">
                     <h3 id="all-comments-title" class="text-sm sm:text-base font-bold truncate">コメント・履歴一覧</h3>
-                    <p id="all-comments-subtitle" class="text-[11px] text-[#d6b779] truncate mt-0.5"></p>
+                    <p id="all-comments-subtitle" class="text-[11px] text-[#d6b779] break-all mt-0.5"></p>
                 </div>
                 <button type="button" onclick="closeAllCommentsModal()" class="p-1.5 text-stone-300 hover:text-white rounded-md shrink-0">
                     <i class="fa-solid fa-xmark text-xl"></i>
@@ -672,7 +672,7 @@
                             </label>
                         </div>
                         <div id="const-sub-thumbs" class="flex flex-wrap gap-1.5 mt-1.5"></div>
-                        <p class="text-[11px] text-stone-500 mt-1">サムネイル右下のペンでモザイク加工ができます</p>
+                        <p class="text-[11px] text-stone-800 mt-1">サムネイル右下のペンでモザイク加工ができます</p>
                     </div>
                 </div>
             </div>
@@ -797,7 +797,7 @@
             <div class="p-5 overflow-y-auto space-y-4">
                 <div class="text-center">
                     <h3 class="text-base font-bold text-stone-800">アカウントを作成してログイン</h3>
-                    <p class="text-xs text-stone-500 mt-1 leading-relaxed">
+                    <p class="text-xs text-stone-800 mt-1 leading-relaxed">
                         お名前・所属・パスワードを設定すると、次回からはログイン操作なしでそのままご利用いただけます。
                     </p>
                 </div>
@@ -940,11 +940,11 @@
                 <!-- 4. 更新履歴 -->
                 <button type="button" onclick="exportBackupJson()" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
                     <span class="flex items-center gap-2.5 font-bold text-stone-800"><i class="fa-solid fa-download text-[#8c672a]"></i>バックアップを書き出す</span>
-                    <span class="text-[10px] text-stone-400">JSONファイルで保存</span>
+                    <span class="text-[11px] text-stone-700">JSONファイルで保存</span>
                 </button>
                 <button type="button" onclick="document.getElementById('backup-import-input').click()" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
                     <span class="flex items-center gap-2.5 font-bold text-stone-800"><i class="fa-solid fa-upload text-[#8c672a]"></i>バックアップから復元する</span>
-                    <span class="text-[10px] text-stone-400">管理者のみ・JSON読み込み</span>
+                    <span class="text-[11px] text-stone-700">管理者のみ・JSON読み込み</span>
                 </button>
                 <button type="button" onclick="openSettingsSubModal('changelog')" class="w-full p-3.5 bg-white hover:bg-amber-50/60 rounded-lg border border-stone-200 shadow-2xs flex items-center justify-between gap-3 text-left transition">
                     <div class="flex items-center gap-3 min-w-0">
@@ -1010,7 +1010,7 @@
                                 <span id="setting-sound-status-label" class="font-bold text-stone-700">効果音 ON</span>
                             </label>
                         </div>
-                        <p class="text-[11px] text-stone-500 leading-relaxed">
+                        <p class="text-[11px] text-stone-800 leading-relaxed">
                             館内図のピンをタップした際の操作音をオン／オフできます。設定はこの端末に保存されます。
                         </p>
                         <div class="pt-2 border-t border-stone-100 flex justify-end">
@@ -1028,7 +1028,7 @@
                             <span class="font-bold text-sm text-stone-800">ご自身のアカウント情報・変更</span>
                             <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">スプレッドシート自動同期</span>
                         </div>
-                        <p class="text-[11px] text-stone-500 leading-relaxed">
+                        <p class="text-[11px] text-stone-800 leading-relaxed">
                             お名前・所属会社・パスワードはいつでも変更できます。変更内容はスプレッドシートへ自動反映されます。
                         </p>
 
@@ -1134,6 +1134,10 @@
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 2.0.1（2026/11/14）</div>
                             <p class="mt-0.5">・全体図・コメントの添付写真の拡大表示にもピンチ拡大・ドラッグ移動を追加（施工記録のカード写真は Ver 2.0 で対応済み）</p>
+                        </div>
+                        <div class="border-l-2 border-[#8c672a] pl-3">
+                            <div class="font-bold text-stone-800">Ver 3.2（2026/11/16）</div>
+                            <p class="mt-0.5">・文字の読みやすさを全体的に見直しました。説明文などの薄いグレーの文字を濃くし、エリア名・担当者名・施工記録の見出しなど、長い名前が「…」で切れず全文表示されるようにしました</p>
                         </div>
                         <div class="border-l-2 border-[#8c672a] pl-3">
                             <div class="font-bold text-stone-800">Ver 3.1（2026/11/15）</div>
@@ -1968,7 +1972,7 @@
             list.innerHTML = matchedUsers.map(u => `
                 <div class="bg-white p-2.5 rounded border border-emerald-200 flex items-center justify-between gap-2">
                     <div class="flex items-center gap-1.5 min-w-0">
-                        <span class="font-bold text-xs text-stone-800 truncate">${escapeHtml(u.name)}</span>
+                        <span class="font-bold text-xs text-stone-800 break-all">${escapeHtml(u.name)}</span>
                         ${getOrgBadgeHtml(u.org)}
                     </div>
                     <button type="button" onclick="quickReLogin('${escapeHtml(u.id)}')" class="px-3 py-1 bg-[#3d6b5e] hover:bg-[#2f5449] text-white rounded text-xs font-bold whitespace-nowrap shrink-0">
@@ -5444,7 +5448,7 @@
             </button>`;
         }
         cal.innerHTML = `<div class="grid grid-cols-7 gap-1">${cells}</div>
-            <p class="mt-2 text-[10px] text-stone-400">日付を押すと、その日の施工記録が下に表示されます。六曜つき（友引は赤字）。</p>`;
+            <p class="mt-2 text-[11px] text-stone-700">日付を押すと、その日の施工記録が下に表示されます。六曜つき（友引は赤字）。</p>`;
         v17RenderDayDetail();
     }
 
@@ -5472,7 +5476,7 @@
                     ${r.notes ? `<div class="mt-1 text-[11px] text-stone-600 whitespace-pre-wrap">${escapeHtml(r.notes)}</div>` : ''}
                 </div>`;
             }).join('')}
-            <p class="text-[10px] text-stone-400">写真の確認や編集は「リスト」表示に切り替えて、該当の記録から行ってください。</p>
+            <p class="text-[11px] text-stone-700">写真の確認や編集は「リスト」表示に切り替えて、該当の記録から行ってください。</p>
         </div>`;
     }
 
@@ -5975,7 +5979,7 @@
         ov.id = 'v20-lightbox';
         ov.className = 'fixed inset-0 z-[80] bg-stone-950/95 flex flex-col';
         ov.innerHTML = '<div class="flex items-center justify-between px-4 py-3 text-stone-100 gap-3">'
-            + '<div class="text-xs sm:text-sm font-bold truncate">' + escapeHtml(formatJapaneseDate(rec.date)) + '｜' + escapeHtml(rec.notes || '') + '</div>'
+            + '<div class="text-xs sm:text-sm font-bold break-all">' + escapeHtml(formatJapaneseDate(rec.date)) + '｜' + escapeHtml(rec.notes || '') + '</div>'
             + '<button type="button" id="v20-lightbox-close" class="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 rounded text-sm font-bold whitespace-nowrap">閉じる</button>'
             + '</div>'
             + '<div class="flex-1 overflow-hidden flex items-center justify-center p-2" id="v20-lightbox-stage">'
@@ -6434,7 +6438,7 @@
         if (!box) return;
         const evs = [...window.V30.events].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
         if (!evs.length) {
-            box.innerHTML = '<p class="text-xs text-stone-400">まだ予定がありません。カレンダーの日付をタップして追加できます。</p>';
+            box.innerHTML = '<p class="text-xs text-stone-800">まだ予定がありません。カレンダーの日付をタップして追加できます。</p>';
             return;
         }
         box.innerHTML = evs.map(ev => {
@@ -6448,9 +6452,9 @@
                         <span class="font-bold text-sm text-stone-800 break-words">${escapeHtml(ev.title || '')}</span>
                         ${ev.label ? `<span class="px-1.5 py-0.5 bg-stone-100 border border-stone-200 rounded text-[10px] font-bold text-stone-600 whitespace-nowrap">${escapeHtml(ev.label)}</span>` : ''}
                     </div>
-                    <p class="text-[11px] text-stone-500">${escapeHtml(formatJapaneseDate(ev.date))}${time}</p>
+                    <p class="text-[11px] text-stone-800">${escapeHtml(formatJapaneseDate(ev.date))}${time}</p>
                     ${ev.content ? `<p class="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(ev.content)}</p>` : ''}
-                    <p class="text-[10px] text-stone-400">投稿: ${escapeHtml(ev.author || '')}${ev.org ? '（' + escapeHtml(ev.org) + '）' : ''}</p>
+                    <p class="text-[11px] text-stone-700">投稿: ${escapeHtml(ev.author || '')}${ev.org ? '（' + escapeHtml(ev.org) + '）' : ''}</p>
                 </div>
                 ${canDel ? `<button type="button" onclick="v30DeleteEvent('${ev.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold shrink-0">削除</button>` : ''}
             </div>`;
@@ -6595,10 +6599,10 @@
         if (!box) return;
         const grouped = (typeof groupEquipmentByCategory === 'function') ? groupEquipmentByCategory() : {};
         const cats = Object.keys(grouped || {});
-        if (!cats.length) { box.innerHTML = '<p class="text-xs text-stone-400">登録されている什器がありません。</p>'; return; }
+        if (!cats.length) { box.innerHTML = '<p class="text-xs text-stone-800">登録されている什器がありません。</p>'; return; }
         box.innerHTML = cats.map(cat => `
             <div>
-                <p class="text-[11px] font-bold text-stone-500 mb-1">${escapeHtml(cat)}</p>
+                <p class="text-[11px] font-bold text-stone-800 mb-1">${escapeHtml(cat)}</p>
                 <div class="flex flex-wrap gap-1.5">
                     ${grouped[cat].map(e => `<label class="inline-flex items-center gap-1 px-2 py-1 bg-white border border-stone-300 rounded text-[11px] cursor-pointer"><input type="checkbox" name="catalog-eq" value="${escapeHtml(e.code || '')}" ${selectedCodes.includes(e.code) ? 'checked' : ''}> ${escapeHtml(e.name || '')}${e.unitLabel ? ' ' + escapeHtml(e.unitLabel) : ''} <span class="font-mono text-stone-400">${escapeHtml(e.code || '')}</span></label>`).join('')}
                 </div>
@@ -6670,9 +6674,9 @@
         const editId = (document.getElementById('eq-edit-id') || {}).value || '';
         const hits = (equipmentData || []).filter(e => e.id !== editId && e.category !== '__deleted__' && ((e.code || '').toLowerCase().includes(q) || (e.name || '').toLowerCase().includes(q))).slice(0, 8);
         if (!hits.length) {
-            box.innerHTML = '<p class="text-stone-400">登録済みの管理ID・什器名に一致はありません</p>';
+            box.innerHTML = '<p class="text-stone-800">登録済みの管理ID・什器名に一致はありません</p>';
         } else {
-            box.innerHTML = '<p class="font-bold text-stone-500">登録済み（重複チェック）:</p>' + hits.map(e => `<p class="flex flex-wrap gap-x-2"><span class="font-mono font-bold text-stone-700">${escapeHtml(e.code || '')}</span><span class="text-stone-600">${escapeHtml(e.name || '')}${e.unitLabel ? ' ' + escapeHtml(e.unitLabel) : ''}</span></p>`).join('');
+            box.innerHTML = '<p class="font-bold text-stone-800">登録済み（重複チェック）:</p>' + hits.map(e => `<p class="flex flex-wrap gap-x-2"><span class="font-mono font-bold text-stone-700">${escapeHtml(e.code || '')}</span><span class="text-stone-600">${escapeHtml(e.name || '')}${e.unitLabel ? ' ' + escapeHtml(e.unitLabel) : ''}</span></p>`).join('');
         }
         box.classList.remove('hidden');
     }
@@ -6979,7 +6983,7 @@
         const box = document.getElementById('catalog-list');
         if (!box) return;
         if (!catalogPatterns.length) {
-            box.innerHTML = '<p class="text-xs text-stone-400">まだ規格が登録されていません。「規格を追加」から、祭壇の構成（使う什器のセット）を登録してください。</p>';
+            box.innerHTML = '<p class="text-xs text-stone-800">まだ規格が登録されていません。「規格を追加」から、祭壇の構成（使う什器のセット）を登録してください。</p>';
             return;
         }
         box.innerHTML = catalogPatterns.map(pat => {

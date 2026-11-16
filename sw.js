@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mizuhodai-tool-v3';
+const CACHE_NAME = 'mizuhodai-tool-v4';
 const ASSETS = [
   './',
   './index.html',
